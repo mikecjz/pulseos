@@ -87,8 +87,14 @@ class Params:
         return dict(self._values)
 
 
-def resolve_params(declared: dict[str, Param], overrides: dict[str, Any] | None) -> Params:
-    """Apply ``overrides`` to the declared defaults; unknown names and out-of-range values fail."""
+def resolve_params(declared: dict[str, Param], overrides: dict[str, Any] | None,
+                   base: dict[str, Any] | None = None) -> Params:
+    """Apply ``base`` then ``overrides`` to the declared defaults.
+
+    Unknown names in ``overrides`` fail; names in ``base`` that the recipe no longer declares are
+    ignored (``base`` carries the previous revision's values across a recipe edit). Every applied
+    value is range-checked.
+    """
     if not isinstance(declared, dict) or not all(isinstance(v, Param) for v in declared.values()):
         raise BuildError("PARAMS must be a dict of name -> param(...)")
     for name in declared:
@@ -97,7 +103,9 @@ def resolve_params(declared: dict[str, Param], overrides: dict[str, Any] | None)
     unknown = sorted(set(overrides) - set(declared))
     if unknown:
         raise BuildError(f"unknown parameter(s): {', '.join(unknown)}; declared: {', '.join(declared)}")
-    values = {name: spec.check(name, overrides.get(name, spec.default)) for name, spec in declared.items()}
+    inherited = {k: v for k, v in (base or {}).items() if k in declared}
+    merged = {**inherited, **overrides}
+    values = {name: spec.check(name, merged.get(name, spec.default)) for name, spec in declared.items()}
     return Params(values)
 
 

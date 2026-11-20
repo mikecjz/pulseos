@@ -6,3 +6,7 @@
       name: '../../packages/seq/scanner-profile/src/index.ts'
       config:
         profile: generic
+    - id: pulseos-seq-service
+      name: '../../packages/seq/service/src/index.ts'
+    - id: pulseos-seq-tools
+      name: '../../packages/seq/tools/src/index.ts'

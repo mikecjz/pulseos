@@ -27,6 +27,9 @@ jobs:
       - name: Build DSH artifacts
         working-directory: dsh
         run: pnpm run build:artifacts
+      - uses: astral-sh/setup-uv@v6
+      - name: Python environment
+        run: uv sync --project python --locked
       - name: Install PulseOS
         run: pnpm install --frozen-lockfile
       - run: pnpm run typecheck

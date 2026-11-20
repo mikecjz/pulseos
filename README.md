@@ -2,7 +2,7 @@
 
 A platform for MR pulse sequence development with an LLM in the loop. It is built from [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (DSH) plugins: a slim chat panel on the left, an interactive sequence viewer on the right, and a [pypulseq](https://github.com/imr-framework/pypulseq) backend. Every sequence element has a stable ID, so it can be referenced in chat and changed from there.
 
-The plan and milestones are tracked in POS-4. Milestones land as stacked pull requests; this branch adds **M1: the pypulseq GRE backend** ([python/README.md](python/README.md)).
+The plan and milestones are tracked in POS-4. Milestones land as stacked pull requests; the stack is at **M2: the sequence service and tools**: the model can build, inspect, edit and compare the 2D GRE in a DSH session.
 
 ## Layout
 
@@ -10,6 +10,9 @@ The plan and milestones are tracked in POS-4. Milestones land as stacked pull re
 dsh/                 DeepSeek Harness, git submodule pinned to one commit
 packages/<group>/    PulseOS DSH plugins (pnpm workspace)
   seq/scanner-profile  ctx.scannerProfile: swappable scanner limits
+  seq/protocol         shared types: element IDs, sequence model, revision records, [[id]] tokens
+  seq/service          ctx.pulseSeq: confined builds, session revisions, model store
+  seq/tools            seq_* model tools (status, build, set params, edit recipe, diff, ...)
 apps/pulseos/        cordis.patch.yml: the PulseOS overlay on a DSH profile
 profiles/scanner/    scanner profile JSON files, shared by TypeScript and Python
 python/              pulseos_seq: recipes, SeqBuilder, element IDs, model JSON, build runner

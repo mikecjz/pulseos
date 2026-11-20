@@ -1,0 +1,13 @@
+{
+  "name": "@pulseos/seq-protocol",
+  "description": "Shared PulseOS sequence types: element IDs, the sequence model, revisions and reference tokens",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./package.json": "./package.json"
+  },
+  "license": "MIT"
+}

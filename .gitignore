@@ -8,3 +8,4 @@ __pycache__/
 *.seq
 coverage/
 *.tsbuildinfo
+.pulseos-data/

@@ -10,7 +10,7 @@
   "scripts": {
     "bootstrap": "node scripts/bootstrap.mjs",
     "typecheck": "tsc -b tsconfig.json",
-    "lint": "oxlint packages scripts",
+    "lint": "oxlint packages apps scripts",
     "test": "vitest run",
     "test:python": "uv run --project python pytest python/tests",
     "smoke:boot": "node scripts/smoke-boot.mjs",
@@ -19,9 +19,11 @@
   },
   "devDependencies": {
     "@types/node": "^22.20.1",
+    "diff": "link:./dsh/node_modules/diff",
     "oxlint": "1.81.0",
     "typescript": "^6.0.3",
     "vite-tsconfig-paths": "^6.1.1",
-    "vitest": "^4.1.11"
+    "vitest": "^4.1.11",
+    "zod": "link:./dsh/node_modules/zod"
   }
 }

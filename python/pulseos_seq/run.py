@@ -3,12 +3,17 @@
 Request::
 
     {"recipe": {"path": "/abs/recipe.py"} | {"bundled": "gre2d"},
-     "params": {"TE": 0.004},
+     "params": {"TE": 0.004},            # strict overrides
+     "baseParams": {"TR": 0.01},         # optional; inherited values, undeclared names ignored
      "profile": {"id": "generic", "directory": "/abs/profiles/scanner"},
-     "seqPath": "/abs/out.seq"}          # optional
+     "seqPath": "/abs/out.seq",          # optional
+     "confine": {"writable": "/abs/tmpdir"}}  # optional; see pulseos_seq.confine
 
 Result: ``{"ok": true, "model": {...}}`` or ``{"ok": false, "error": {kind, message, line, traceback}}``.
 A recipe failure is a normal result (exit status 0); a malformed request exits with status 2.
+With ``confine``, the recipe and profile are read first, then the process confines itself with
+Landlock before any recipe code runs; if confinement is unavailable the build fails (``kind``
+``sandbox``) instead of running unconfined.
 """
 
 from __future__ import annotations
@@ -20,6 +25,7 @@ import warnings
 from contextlib import redirect_stdout
 from typing import Any
 
+from .confine import ConfinementUnavailable, confine
 from .recipe import RecipeError, build_sequence, bundled_recipe, load_recipe
 from .scanner import ScannerProfileError, load_profile
 
@@ -42,12 +48,21 @@ def handle(request: dict[str, Any]) -> dict[str, Any]:
             filename = str(recipe_spec["path"])
             with open(filename, encoding="utf-8") as handle_file:
                 source = handle_file.read()
+        confinement = request.get("confine")
+        if confinement is not None:
+            try:
+                abi = confine(str(confinement["writable"]))
+            except (ConfinementUnavailable, KeyError, TypeError, OSError) as error:
+                return {"ok": False, "error": {"kind": "sandbox", "message": f"cannot confine the build: {error}",
+                                               "line": None, "traceback": None}}
         recipe = load_recipe(source, filename)
         captured = io.StringIO()
         with warnings.catch_warnings(record=True) as caught, redirect_stdout(captured):
             warnings.simplefilter("always")
-            model = build_sequence(recipe, profile, request.get("params"), request.get("seqPath"))
+            model = build_sequence(recipe, profile, request.get("params"), request.get("seqPath"),
+                                   request.get("baseParams"))
         model["warnings"] = sorted({str(w.message) for w in caught})
+        model["confinement"] = {"landlockAbi": abi} if confinement is not None else None
         model["log"] = captured.getvalue()[-20000:]
         return {"ok": True, "model": model}
     except RecipeError as error:

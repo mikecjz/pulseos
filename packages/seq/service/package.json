@@ -1,0 +1,17 @@
+{
+  "name": "@pulseos/seq-service",
+  "description": "ctx.pulseSeq: confined pypulseq builds, session revisions and the sequence model store",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./package.json": "./package.json"
+  },
+  "dependencies": {
+    "@pulseos/scanner-profile": "workspace:*",
+    "@pulseos/seq-protocol": "workspace:*"
+  },
+  "license": "MIT"
+}
