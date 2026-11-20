@@ -1,0 +1,27 @@
+{
+  "name": "@pulseos/root",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.28.5",
+  "engines": {
+    "node": ">=24.9.0"
+  },
+  "scripts": {
+    "bootstrap": "node scripts/bootstrap.mjs",
+    "typecheck": "tsc -b tsconfig.json",
+    "lint": "oxlint packages scripts",
+    "test": "vitest run",
+    "test:python": "uv run --project python pytest python/tests",
+    "smoke:boot": "node scripts/smoke-boot.mjs",
+    "dsh": "node scripts/dsh.mjs",
+    "web": "node scripts/dsh.mjs web"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.1",
+    "oxlint": "1.81.0",
+    "typescript": "^6.0.3",
+    "vite-tsconfig-paths": "^6.1.1",
+    "vitest": "^4.1.11"
+  }
+}

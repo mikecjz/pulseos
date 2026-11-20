@@ -1,0 +1,13 @@
+{
+  // Extends the DSH base so its `paths` map (resolved relative to dsh/) sends
+  // every @deepseek-ai/* import to submodule source. Never redefine `paths`
+  // here: a `paths` key replaces the inherited map instead of merging with it.
+  "extends": "./dsh/tsconfig.node.base.json",
+  "compilerOptions": {
+    "composite": false,
+    "incremental": false,
+    "declaration": false,
+    "declarationMap": false,
+    "noEmit": true
+  }
+}

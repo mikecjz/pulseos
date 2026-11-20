@@ -1,0 +1,4 @@
+# PulseOS workspace packages. The DSH submodule under dsh/ is its own pnpm
+# workspace and is installed separately by `pnpm run bootstrap`.
+packages:
+  - packages/*/*

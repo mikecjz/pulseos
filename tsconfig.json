@@ -1,0 +1,16 @@
+{
+  // Type-checks PulseOS sources. DSH packages are referenced projects: `tsc -b`
+  // checks them under their own compiler options and emits their declarations
+  // into dsh/**/lib/types (git-ignored there), which this program then reads.
+  "extends": "./tsconfig.base.json",
+  "include": [
+    "packages/*/*/src",
+    "packages/*/*/tests",
+    "vitest.config.ts"
+  ],
+  "references": [
+    { "path": "./dsh/vendor/cosmokit" },
+    { "path": "./dsh/vendor/schemastery" },
+    { "path": "./dsh/vendor/cordis" }
+  ]
+}
