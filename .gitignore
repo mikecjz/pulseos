@@ -1,0 +1,10 @@
+node_modules/
+lib/
+.dsh-home/
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+*.seq
+coverage/
+*.tsbuildinfo
