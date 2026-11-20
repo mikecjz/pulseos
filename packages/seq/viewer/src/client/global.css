@@ -1,0 +1,4 @@
+/* [[element id]] references inside assistant text, styled without changing the DOM (CSS Custom Highlight API). */
+::highlight(pulseos-ref) { color: #ff5cc8; background-color: rgba(255, 92, 200, 0.12); text-decoration: underline dotted; }
+::highlight(pulseos-ref-bad) { color: #ef4444; background-color: rgba(239, 68, 68, 0.1); text-decoration: underline wavy; }
+html[data-pulseos-ref-hover] body { cursor: pointer; }

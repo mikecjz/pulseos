@@ -12,3 +12,5 @@
       name: '../../packages/seq/tools/src/index.ts'
     - id: pulseos-seq-refs
       name: '../../packages/seq/refs/src/index.ts'
+    - id: pulseos-seq-viewer
+      name: '../../packages/seq/viewer/src/index.ts'

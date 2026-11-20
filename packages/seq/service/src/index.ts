@@ -229,6 +229,15 @@ export class PulseSeqService extends Service {
   }
 
   /**
+   * Whether a build of this session is queued or running.
+   * @param session - the session.
+   * @returns true while a build is pending.
+   */
+  isBuilding(session: Session): boolean {
+    return this.queues.has(String(session.id))
+  }
+
+  /**
    * Build and record one revision. Builds of one session run one at a time.
    * @param session - the session that owns the revision.
    * @param request - what to build.

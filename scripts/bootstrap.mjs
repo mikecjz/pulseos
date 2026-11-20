@@ -24,4 +24,5 @@ run('pnpm', ['install', '--frozen-lockfile'], { cwd: dshRoot, env: { ...process.
 // the Web client bundle from its lib/ outputs.
 run('pnpm', ['run', 'build:artifacts'], { cwd: dshRoot })
 run('pnpm', ['install'])
+run('pnpm', ['run', 'build'])
 run('uv', ['sync', '--project', 'python'])

@@ -8,12 +8,18 @@
  * stay out of the user's ~/.dsh.
  */
 import { spawn } from 'node:child_process'
-import { appPatch, defaultDshHome, dshRoot } from './paths.mjs'
+import { existsSync } from 'node:fs'
+import { appPatch, defaultDshHome, dshRoot, repoRoot } from './paths.mjs'
 
 const [profile, ...rest] = process.argv.slice(2)
 if (profile === undefined) {
   console.error('usage: node scripts/dsh.mjs <profile> [dsh options] [app args]')
   process.exit(2)
+}
+// The overlay's Web client plugin loads its built bundle; DSH fails the boot without it.
+if (!existsSync(`${repoRoot}packages/seq/viewer/lib/client.js`)) {
+  console.error('The sequence viewer bundle is missing: run `pnpm run build` first.')
+  process.exit(1)
 }
 const child = spawn(process.execPath, ['--import', 'tsx/esm', 'apps/cli/src/bin.ts', profile, '--patch', appPatch, ...rest], {
   cwd: dshRoot,

@@ -9,18 +9,21 @@
   },
   "scripts": {
     "bootstrap": "node scripts/bootstrap.mjs",
-    "typecheck": "tsc -b tsconfig.json",
+    "typecheck": "tsc -b tsconfig.json && tsc -b tsconfig.client.json",
     "lint": "oxlint packages apps scripts",
     "test": "vitest run",
     "test:python": "uv run --project python pytest python/tests",
     "smoke:boot": "node scripts/smoke-boot.mjs",
     "dsh": "node scripts/dsh.mjs",
-    "web": "node scripts/dsh.mjs web"
+    "web": "node scripts/dsh.mjs web",
+    "build": "pnpm --filter @pulseos/seq-viewer run bundle"
   },
   "devDependencies": {
     "@types/node": "^22.20.1",
+    "@types/react": "link:./dsh/node_modules/@types/react",
     "diff": "link:./dsh/node_modules/diff",
     "oxlint": "1.81.0",
+    "playwright-core": "1.61.1",
     "typescript": "^6.0.3",
     "vite-tsconfig-paths": "^6.1.1",
     "vitest": "^4.1.11",
