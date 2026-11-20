@@ -32,6 +32,18 @@ importers:
 
   packages/seq/protocol: {}
 
+  packages/seq/refs:
+    dependencies:
+      '@pulseos/seq-protocol':
+        specifier: workspace:*
+        version: link:../protocol
+      '@pulseos/seq-service':
+        specifier: workspace:*
+        version: link:../service
+      '@pulseos/seq-tools':
+        specifier: workspace:*
+        version: link:../tools
+
   packages/seq/scanner-profile: {}
 
   packages/seq/service:
