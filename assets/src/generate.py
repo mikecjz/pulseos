@@ -192,7 +192,9 @@ class Type:
             if extra and i in extra:
                 cx += extra[i] * self.upm
             tp = TransformPen(pen, (s, 0, 0, -s, x + cx * s, y))
-            if cuts and ch in cuts:
+            if cuts and callable(cuts.get(ch)):
+                cuts[ch](self.gs[g], tp)
+            elif cuts and ch in cuts:
                 _cut_glyph(self.gs[g], cuts[ch]).draw(tp)
             else:
                 self.gs[g].draw(tp)
@@ -245,13 +247,40 @@ def _cut_glyph(glyph, rects):
 
 
 # Breaks in the Saira wordmark, in font units (Saira wght 520 / wdth 118).
+def _draw_open_p(glyph, pen) -> None:
+    """Hand-redrawn "p": the bowl's bottom stroke ends in a square terminal
+    64 units short of the stem (the same gap as the "e"), and the stem's right
+    edge runs straight down. One contour; coordinates are Saira wght 520 /
+    wdth 118 font units, taken from the original outline where unchanged."""
+    assert glyph.width == 648, "p redraw is tied to the Saira 520/118 instance"
+    pen.moveTo((89, -201))
+    pen.lineTo((89, 510))
+    pen.lineTo((190, 510))
+    pen.lineTo((193, 440))
+    pen.lineTo((201, 440))
+    pen.qCurveTo((218, 473), (274, 506), (344, 518), (379, 518))           # shoulder
+    pen.qCurveTo((435, 518), (513, 493), (559, 433), (580, 332), (580, 256))
+    pen.qCurveTo((580, 180), (560, 77), (514, 18), (439, -8), (383, -8))
+    pen.lineTo((262, -8))                                                  # flat bottom
+    pen.lineTo((262, 89))                                                  # square terminal
+    pen.lineTo((334, 89))
+    pen.qCurveTo((380, 89), (435, 100), (462, 133), (471, 199), (471, 255))  # counter
+    pen.qCurveTo((471, 311), (462, 377), (435, 412), (380, 423), (334, 423))
+    pen.qCurveTo((286, 423), (229, 400), (216, 376))
+    pen.qCurveTo((203, 356), (198, 294), (198, 255))
+    pen.lineTo((198, -201))                                                # stem, right edge
+    pen.closePath()
+
+
 # "e": the crossbar stops short of the bowl's left wall, like the DeepSeek "e".
+# "p": the bowl opens at the bottom-left, like the DeepSeek "p" (redrawn, not cut).
 # "s" is an option (not used by default): a cut through the spine.
 SAIRA_CUTS = {
     "e": [(177, 200, 241, 310)],
+    "p": _draw_open_p,
     "s": [(246, 170, 300, 330)],
 }
-SAIRA_DEFAULT_CUTS = ("e",)
+SAIRA_DEFAULT_CUTS = ("e", "p")
 
 
 class SairaWordmark:
