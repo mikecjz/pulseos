@@ -174,8 +174,13 @@ class Type:
         return table
 
     def path(self, text: str, size: float, x: float, y: float, tracking: float = 0.0,
-             extra: dict[int, float] | None = None) -> tuple[str, float]:
-        """Outline `text` with its baseline at y. Returns (path data, advance width)."""
+             extra: dict[int, float] | None = None,
+             cuts: dict[str, list[tuple[float, float, float, float]]] | None = None) -> tuple[str, float]:
+        """Outline `text` with its baseline at y. Returns (path data, advance width).
+
+        `cuts` maps a character to rectangles (x0, y0, x1, y1, in font units) removed
+        from that glyph, e.g. to detach a bar or a bowl.
+        """
         s = size / self.upm
         pen = SVGPathPen(self.gs)
         cx = 0.0
@@ -187,7 +192,10 @@ class Type:
             if extra and i in extra:
                 cx += extra[i] * self.upm
             tp = TransformPen(pen, (s, 0, 0, -s, x + cx * s, y))
-            self.gs[g].draw(tp)
+            if cuts and ch in cuts:
+                _cut_glyph(self.gs[g], cuts[ch]).draw(tp)
+            else:
+                self.gs[g].draw(tp)
             cx += self.gs[g].width
             prev = g
         return pen.getCommands(), cx * s
@@ -221,10 +229,36 @@ class InterWordmark:
         return (f'<path d="{d1}" fill="{ink}"/><path d="{d2}" fill="{ink}"/>', w1 + gap + w2)
 
 
+def _cut_glyph(glyph, rects):
+    """Glyph outline minus rectangles (boolean difference via skia-pathops)."""
+    import pathops
+
+    ink = pathops.Path()
+    glyph.draw(ink.getPen(glyphSet=None))
+    ink.simplify()
+    hole = pathops.Path()
+    pen = hole.getPen()
+    for x0, y0, x1, y1 in rects:
+        pen.moveTo((x0, y0)); pen.lineTo((x0, y1)); pen.lineTo((x1, y1)); pen.lineTo((x1, y0))
+        pen.closePath()
+    return pathops.op(ink, hole, pathops.PathOp.DIFFERENCE)
+
+
+# Breaks in the Saira wordmark, in font units (Saira wght 520 / wdth 118).
+# "e": the crossbar stops short of the bowl's left wall, like the DeepSeek "e".
+# "s" is an option (not used by default): a cut through the spine.
+SAIRA_CUTS = {
+    "e": [(177, 200, 241, 310)],
+    "s": [(246, 170, 300, 330)],
+}
+SAIRA_DEFAULT_CUTS = ("e",)
+
+
 class SairaWordmark:
     """Lowercase "pulseos" in wide Saira Medium, one weight, one colour."""
 
-    def __init__(self):
+    def __init__(self, cut: tuple[str, ...] = SAIRA_DEFAULT_CUTS):
+        self.cuts = {c: SAIRA_CUTS[c] for c in cut}
         self.word = Type(saira(520, 118))
         self.text = Type(saira(400, 104))
         self.text_med = Type(saira(500, 104))
@@ -232,7 +266,7 @@ class SairaWordmark:
     def __call__(self, ink: str, scale: float) -> tuple[str, float]:
         xh = 62.0 * scale  # x-height on the 256 grid
         size = xh / self.word.xh * self.word.upm
-        d, w = self.word.path("pulseos", size, 0, 0, tracking=-0.012)
+        d, w = self.word.path("pulseos", size, 0, 0, tracking=-0.012, cuts=self.cuts)
         return f'<path d="{d}" fill="{ink}"/>', w
 
 
