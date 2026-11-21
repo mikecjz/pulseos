@@ -281,6 +281,14 @@ function drawShape(
     g.closePath()
     g.fillStyle = fill
     g.fill()
+    // Outline the waveform only: no stroke along the zero baseline, so nothing is drawn at y = 0.
+    g.beginPath()
+    for (let i = 0; i < points.t.length; i++) {
+      const px = x(points.t[i]!)
+      const py = yOf(points.v[i]!)
+      if (i === 0 || (points.v[i - 1] === 0 && points.v[i] === 0)) g.moveTo(px, py)
+      else g.lineTo(px, py)
+    }
     g.strokeStyle = stroke
     g.lineWidth = sel ? 2 : 1.2
     g.stroke()
