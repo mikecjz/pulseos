@@ -9,8 +9,8 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { chromium, type Browser, type Page } from 'playwright-core'
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { findChromium } from './browser.ts'
+import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
+import { diagnose, findChromium } from './browser.ts'
 import { startScriptedLlm, type ScriptedLlm } from './scripted-llm.ts'
 
 const repo = fileURLToPath(new URL('../../../', import.meta.url))
@@ -52,6 +52,10 @@ describe.skipIf(executablePath === undefined)('sequence viewer opens by default'
     await page.goto(url)
     await page.getByRole('button', { name: 'Continue' }).click({ timeout: 30_000 }).catch(() => undefined)
   }, 240_000)
+
+  afterEach(async (context) => {
+    if (context.task.result?.state === 'fail' && page !== undefined) await diagnose(page, `web-default-${context.task.name.replace(/\W+/g, '-')}`, log)
+  })
 
   afterAll(async () => {
     await browser?.close()

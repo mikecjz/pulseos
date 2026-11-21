@@ -19,3 +19,19 @@ export function findChromium(): string | undefined {
   }
   return undefined
 }
+
+/**
+ * Record what the page shows when a browser test fails: a screenshot under test-results/ (uploaded
+ * by CI) and the page URL and text on stderr.
+ * @param page - the page.
+ * @param name - file name stem.
+ * @param log - server log tail to print alongside.
+ */
+export async function diagnose(page: import('playwright-core').Page, name: string, log = ''): Promise<void> {
+  const { mkdirSync } = await import('node:fs')
+  const dir = join(process.cwd(), 'test-results')
+  mkdirSync(dir, { recursive: true })
+  await page.screenshot({ path: join(dir, `${name}.png`), fullPage: true }).catch(() => undefined)
+  const text = await page.locator('body').innerText().catch(() => '(no page text)')
+  console.error(`[${name}] url=${page.url().replace(/token=[^&]+/, 'token=…')}\n--- page text ---\n${text.slice(0, 2000)}\n--- dsh log tail ---\n${log.slice(-3000).replace(/token=[A-Za-z0-9_-]+/g, 'token=…')}`)
+}
