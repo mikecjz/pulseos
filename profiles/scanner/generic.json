@@ -1,0 +1,17 @@
+{
+  "id": "generic",
+  "title": "Generic 3 T scanner",
+  "description": "Conservative limits that every current clinical 3 T system meets. Not tuned to a vendor.",
+  "limits": {
+    "b0_T": 3.0,
+    "max_grad_mT_per_m": 40,
+    "max_slew_T_per_m_per_s": 150,
+    "grad_raster_time_s": 1e-5,
+    "rf_raster_time_s": 1e-6,
+    "adc_raster_time_s": 1e-7,
+    "block_duration_raster_s": 1e-5,
+    "rf_dead_time_s": 1e-4,
+    "rf_ringdown_time_s": 2e-5,
+    "adc_dead_time_s": 1e-5
+  }
+}

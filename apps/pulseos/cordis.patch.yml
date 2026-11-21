@@ -1,0 +1,8 @@
+# PulseOS overlay on a DSH profile. scripts/dsh.mjs passes this file as
+# `--patch`; relative plugin paths resolve beside this file.
+
+- insert:
+    - id: pulseos-scanner-profile
+      name: '../../packages/seq/scanner-profile/src/index.ts'
+      config:
+        profile: generic
