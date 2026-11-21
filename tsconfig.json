@@ -16,6 +16,7 @@
     { "path": "./dsh/packages/session/session-projection" },
     { "path": "./dsh/packages/subprocess/subprocess" },
     { "path": "./dsh/packages/core/tools" },
-    { "path": "./dsh/packages/llm/llm" }
+    { "path": "./dsh/packages/llm/llm" },
+    { "path": "./dsh/packages/core/agent" }
   ]
 }
