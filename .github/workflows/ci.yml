@@ -36,11 +36,22 @@ jobs:
         run: uv sync --project python --locked
       - name: Install PulseOS
         run: pnpm install --frozen-lockfile
+      - name: Build the viewer bundle
+        run: pnpm run build
+      - name: Chromium for the browser test
+        run: pnpm exec playwright-core install --with-deps chromium
       - run: pnpm run typecheck
       - run: pnpm run lint
       - run: pnpm run test
       - name: Boot smoke
         run: pnpm run smoke:boot
+      - name: Browser test screenshots
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: test-results/
+          if-no-files-found: ignore
 
   python:
     runs-on: ubuntu-latest

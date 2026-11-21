@@ -1,0 +1,36 @@
+{
+  "name": "@pulseos/seq-viewer",
+  "description": "PulseOS sequence viewer: right-sidebar waveform viewer and [[element id]] chips for the DSH Web client",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./client": {
+      "default": "./lib/client.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-renderer",
+        "@deepseek-ai/dsh-client-ui-sidebar-right",
+        "@deepseek-ai/dsh-api-session-controller",
+        "@deepseek-ai/dsh-client-ui-conversation",
+        "@deepseek-ai/dsh-client-ui-input-trigger"
+      ]
+    }
+  },
+  "scripts": {
+    "bundle": "node ../../../dsh/node_modules/tsdown/dist/run.mjs"
+  },
+  "dependencies": {
+    "@pulseos/scanner-profile": "workspace:*",
+    "@pulseos/seq-protocol": "workspace:*",
+    "@pulseos/seq-service": "workspace:*"
+  },
+  "license": "MIT"
+}

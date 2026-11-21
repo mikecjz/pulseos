@@ -1,7 +1,8 @@
 /**
- * A keyless Messages-compatible endpoint that plays a fixed script of tool calls, for driving the
- * real DSH composition in tests. The step is derived from the number of tool calls already in the
- * request history, so retries and auxiliary requests (no PulseOS tools offered) do not advance it.
+ * A keyless Messages-compatible endpoint that plays a fixed script of replies, for driving the
+ * real DSH composition in tests. The step is the number of assistant messages already in the
+ * request history, so retries and auxiliary requests (no PulseOS tools offered) do not advance it,
+ * and a resumed conversation continues where it stopped.
  */
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
 import type { AddressInfo } from 'node:net'
@@ -66,10 +67,8 @@ export async function startScriptedLlm(script: ScriptStep[], toolPrefix = 'seq_'
         return
       }
       requests.push(body)
-      const calls = body.messages
-        .filter(m => m.role === 'assistant' && Array.isArray(m.content))
-        .flatMap(m => (m.content as ContentBlock[]).filter(b => b.type === 'tool_use')).length
-      reply(response, script[calls] ?? { text: 'Done.' }, calls)
+      const step = body.messages.filter(m => m.role === 'assistant').length
+      reply(response, script[step] ?? { text: 'Done.' }, step)
     })
   })
   await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve))
