@@ -1,5 +1,12 @@
 # PulseOS
 
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/logo/pulseos-logo-dark.svg">
+    <img alt="PulseOS" src="assets/logo/pulseos-logo-light.svg" width="420">
+  </picture>
+</p>
+
 A platform for MR pulse sequence development with an LLM in the loop. It is built from [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (DSH) plugins: a slim chat panel on the left, an interactive sequence viewer on the right, and a [pypulseq](https://github.com/imr-framework/pypulseq) backend. Every sequence element has a stable ID, so it can be referenced in chat and changed from there.
 
 The plan and milestones are tracked in POS-4. Milestones land as stacked pull requests; the stack is at **M4: the viewer**: chat on the left, the interactive sequence viewer on the right. The model builds, inspects, edits and compares the 2D GRE; every element can be clicked into chat as `[[gre2d:excitation.rf|r1]]`, and references in chat highlight the element in the viewer.
