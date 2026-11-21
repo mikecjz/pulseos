@@ -4,5 +4,11 @@
     "correctness": "error",
     "suspicious": "warn"
   },
-  "ignorePatterns": ["dsh/**", "**/lib/**"]
+  "ignorePatterns": [
+    "dsh/**",
+    "**/lib/**"
+  ],
+  "rules": {
+    "unicorn/require-module-specifiers": "off"
+  }
 }

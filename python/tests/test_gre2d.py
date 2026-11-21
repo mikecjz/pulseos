@@ -199,3 +199,15 @@ def test_cli_round_trip(tmp_path):
     assert error["kind"] == "runtime" and error["line"] > 0
     bad = subprocess.run([sys.executable, "-m", "pulseos_seq.run"], input="[]", capture_output=True, text=True)
     assert bad.returncode == 2
+
+
+def test_base_params_are_inherited_leniently(gre2d_source):
+    from pulseos_seq.recipe import build_sequence
+    from pulseos_seq.scanner import load_profile
+
+    recipe = load_recipe(*gre2d_source)
+    model = build_sequence(recipe, load_profile(), {"Ny": 8}, None, {"TE": 5e-3, "removed_param": 1, "Ny": 16})
+    assert model["params"]["TE"]["value"] == 5e-3
+    assert model["params"]["Ny"]["value"] == 8  # overrides win over inherited values
+    with pytest.raises(RecipeError, match="above its maximum"):
+        build_sequence(recipe, load_profile(), None, None, {"flip_angle": 500.0})

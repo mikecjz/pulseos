@@ -113,9 +113,12 @@ export class ScannerProfileService extends Service {
 
   /** The loaded profile. */
   readonly profile: ScannerProfile
+  /** Directory the profile was loaded from; builds load the same file from here. */
+  readonly directory: string
 
   constructor(ctx: Context, config: Config) {
     super(ctx, 'scannerProfile')
+    this.directory = config.directory
     this.profile = loadScannerProfile(config.directory, config.profile)
   }
 

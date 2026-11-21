@@ -1,0 +1,17 @@
+{
+  "name": "@pulseos/seq-tools",
+  "description": "Model-facing tools to inspect, build, edit and compare PulseOS sequences",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./package.json": "./package.json"
+  },
+  "dependencies": {
+    "@pulseos/seq-protocol": "workspace:*",
+    "@pulseos/seq-service": "workspace:*"
+  },
+  "license": "MIT"
+}

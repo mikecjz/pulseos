@@ -109,7 +109,8 @@ def build_model(*, seq_name: str, seq: pp.Sequence, records: BuilderRecords, dec
     for marker in records.markers:
         role = PARAM_ROLE if marker.name in declared else MARKER_ROLE
         markers.append({"id": f"{seq_name}:{role}.{marker.name}", "name": marker.name, "t": marker.t, "start": marker.start,
-                        "loop": _loop_json(marker.loop)})
+                        "loop": _loop_json(marker.loop),
+                        "fingerprint": digest(marker.t - (marker.start or 0.0))})
 
     shapes = {sid: {"t": s.t, "value": s.value, **({"phase": s.phase} if s.phase is not None else {})}
               for sid, s in records.shapes.items()}

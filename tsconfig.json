@@ -6,11 +6,16 @@
   "include": [
     "packages/*/*/src",
     "packages/*/*/tests",
-    "vitest.config.ts"
+    "apps/*/tests"
   ],
   "references": [
     { "path": "./dsh/vendor/cosmokit" },
     { "path": "./dsh/vendor/schemastery" },
-    { "path": "./dsh/vendor/cordis" }
+    { "path": "./dsh/vendor/cordis" },
+    { "path": "./dsh/packages/core/session" },
+    { "path": "./dsh/packages/session/session-projection" },
+    { "path": "./dsh/packages/subprocess/subprocess" },
+    { "path": "./dsh/packages/core/tools" },
+    { "path": "./dsh/packages/llm/llm" }
   ]
 }

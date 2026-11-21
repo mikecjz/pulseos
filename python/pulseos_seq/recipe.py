@@ -127,10 +127,13 @@ def load_recipe(source: str, filename: str) -> Recipe:
 
 
 def build_sequence(recipe: Recipe, profile: ScannerProfile, params: dict[str, Any] | None = None,
-                   seq_path: str | Path | None = None) -> dict[str, Any]:
-    """Run the recipe and return the sequence model; optionally write the ``.seq`` file."""
+                   seq_path: str | Path | None = None, base_params: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Run the recipe and return the sequence model; optionally write the ``.seq`` file.
+
+    ``params`` are strict overrides; ``base_params`` are inherited values (see ``resolve_params``).
+    """
     try:
-        resolved = resolve_params(recipe.params, params)
+        resolved = resolve_params(recipe.params, params, base_params)
     except (BuildError, ElementIdError) as error:
         raise RecipeError("params", str(error)) from error
     b = SeqBuilder(recipe.sequence, to_opts(profile), resolved, recipe.filename)
