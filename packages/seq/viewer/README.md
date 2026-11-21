@@ -46,6 +46,9 @@ The viewer is a right-sidebar page type, `pulseos-sequence`.
 - **Navigation:**
   - Ctrl/⌘ + wheel zooms around the cursor; the wheel or a drag pans; dragging on the ruler zooms to that range; double-click zooms to an element.
   - Keys: `+`/`−` zoom, `←`/`→` pan, `[`/`]` previous/next TR.
+- **Navigation from chat:** the model calls `seq_show` (for example on "go to ky = 0 block"). The tool resolves the place on the host with `findNavigation` from `@pulseos/seq-protocol` and appends a `plugin:pulseos/navigate` record `{ rev, select, view, label }`. When that record arrives live, the viewer opens (even if it was closed for the session, since this is an explicit request), switches to the record's revision, selects `select` and shows `view`. Records replayed when a session is loaded or reloaded are ignored, so history never moves the view.
+  - Targets: an element ID; loop indices; or `ky`/`kz`, the k-space line from the phase-encode/partition gradient area between the excitation centre and the ADC centre, in units of the smallest spacing between lines (0 = centre).
+  - By default the block holding the ADC is selected and its whole repetition is shown; `role` and `frame: "block"` change that.
 - **Selection:**
   - Click selects an element at role level, so all of its instances are highlighted and everything else is dimmed. Shift- or Alt-click selects one instance.
   - Clicking a block label selects the role.
@@ -96,6 +99,7 @@ Deferred to M5:
 - **Restore from the revision picker.** Restore today goes through chat (`seq_restore`).
 
 Not yet built:
+- **k-space lines for non-Cartesian or blipped readouts** — `ky`/`kz` count gradient area that ends before the first ADC's centre in each repetition, so they suit Cartesian phase/partition encoding; a gradient played during the ADC is not counted, and later ADCs in the same repetition are not addressable by k-space line (use loop indices or an element ID).
 - **Narrow-screen layouts** — below 900 px only the recipe pane is hidden; the tab and bottom-sheet layouts are not built.
 - **Measure tool, phase-encode ladder overlay, URL-hash view state, drag-to-composer and `[[` autocomplete.** The `@` source replaces `[[`, because DSH trigger characters are only `/` and `@`.
 - **Property source tags** (param, derived, code) in the inspector.

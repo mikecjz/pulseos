@@ -1,7 +1,7 @@
 /** Per-session viewer state shared by the viewer tab and the reference chips. */
 import {
   parseElementId, resolve, resolveBetween, ElementIdError, formatElementId,
-  type Channel, type SequenceModel,
+  type Channel, type NavigateRecord, type SequenceModel,
 } from '@pulseos/seq-protocol'
 import { BUILD_PATH, MODEL_PATH, RECIPE_PATH, SEQ_PATH, STATE_PATH, type ViewerState } from '../routes.ts'
 import { clampView, SequenceIndex, type Viewport } from './geometry.ts'
@@ -174,11 +174,23 @@ export class ViewerStore {
   }
 
   /** Show a revision; null follows the latest. */
-  pin(rev: number | null): void {
+  pin(rev: number | null): Promise<void> {
     this.set({ pinnedRev: rev })
     const latest = this.snapshot.state?.revisions.at(-1)?.rev ?? null
     const target = rev ?? latest
-    if (target !== null) void this.show(target, false)
+    return target === null ? Promise.resolve() : this.show(target, false)
+  }
+
+  /** Apply a navigation the model requested (`seq_show`): show its revision, select and frame. */
+  async navigate(record: NavigateRecord): Promise<void> {
+    await this.refresh()
+    const latest = this.snapshot.state?.revisions.at(-1)?.rev ?? null
+    if (latest === null || this.disposed) return
+    const pinned = record.rev === latest ? null : record.rev
+    if (pinned !== this.snapshot.pinnedRev || this.snapshot.shownRev !== record.rev) await this.pin(pinned)
+    if (this.snapshot.shownRev !== record.rev) return
+    this.set({ selection: record.select, pulse: this.snapshot.pulse + 1 })
+    this.setView(record.view)
   }
 
   setView(view: Viewport): void {
@@ -198,7 +210,7 @@ export class ViewerStore {
     let target = this.snapshot.shownRev ?? latest
     let model = await this.model(target)
     if (resolve(model, id).status === 'gone' && rev !== null) {
-      this.pin(rev)
+      await this.pin(rev)
       target = rev
       model = await this.model(rev)
     }
