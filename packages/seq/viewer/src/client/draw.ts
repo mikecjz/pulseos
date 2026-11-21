@@ -162,6 +162,8 @@ export function drawTracks(g: CanvasRenderingContext2D, input: DrawInput): void 
     if (r.key === 'gz' || r.key === 'gy' || r.key === 'gx') {
       const zero = r.y + r.h / 2
       const yOf = (v: number) => zero - (v / gradScale) * (r.h / 2 - 4)
+      g.strokeStyle = p.line2
+      g.beginPath(); g.moveTo(0, zero + 0.5); g.lineTo(width, zero + 0.5); g.stroke()
       if (input.gradLimit > 0) {
         g.setLineDash([3, 4]); g.strokeStyle = alpha(p.bad, 0.45)
         for (const v of [input.gradLimit, -input.gradLimit]) { g.beginPath(); g.moveTo(0, Math.round(yOf(v)) + 0.5); g.lineTo(width, Math.round(yOf(v)) + 0.5); g.stroke() }
@@ -171,6 +173,8 @@ export function drawTracks(g: CanvasRenderingContext2D, input: DrawInput): void 
     } else if (r.key === 'rf') {
       const base = r.y + r.h - 6
       const yOf = (v: number) => base - (v / rfScale) * (r.h - 16)
+      g.strokeStyle = p.line2
+      g.beginPath(); g.moveTo(0, base + 0.5); g.lineTo(width, base + 0.5); g.stroke()
       for (const e of index.eventsIn('rf', view.t0, view.t1)) {
         drawShape(g, e, model, x, yOf, base, color, input, selected(e.id), dimmed(e.id), p)
         if (e.kind === 'rf' && e.duration * pxPerS > 30) {
@@ -281,7 +285,7 @@ function drawShape(
     g.closePath()
     g.fillStyle = fill
     g.fill()
-    // Outline the waveform only: no stroke along the zero baseline, so nothing is drawn at y = 0.
+    // Outline the waveform only, never the edge along the baseline: the track's grey reference line is the only line at y = 0.
     g.beginPath()
     for (let i = 0; i < points.t.length; i++) {
       const px = x(points.t[i]!)
