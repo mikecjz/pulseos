@@ -7,10 +7,20 @@ import type { Context } from '@deepseek-ai/cordis'
 import { createTwoFilesPatch } from 'diff'
 import { HarnessError } from '@deepseek-ai/dsh-llm'
 import { defineTool, ToolArgsError, ToolContextUnavailableError, type ToolRunContext } from '@deepseek-ai/dsh-tools'
-import type { Session } from '@deepseek-ai/dsh-session'
-import { ElementIdError, paramChanges, resolve, roleDiff, type SequenceModel } from '@pulseos/seq-protocol'
+import { appendPluginRecord, type Session } from '@deepseek-ai/dsh-session'
+import {
+  ElementIdError, findNavigation, NAVIGATE_RECORD, paramChanges, resolve, roleDiff,
+  type NavigateRecord, type NavigationFrame, type SequenceModel,
+} from '@pulseos/seq-protocol'
 import type { BuildOutcome, PulseSeqService } from '@pulseos/seq-service'
 import { describeElement, numbered, overview, revisionLine, time, timingReport } from './format.ts'
+
+declare module '@deepseek-ai/dsh-session/types' {
+  interface PluginRecordMap {
+    /** The model moved the viewer: select an element and show a time window. */
+    'plugin:pulseos/navigate': NavigateRecord
+  }
+}
 
 export const name = 'pulseos-seq-tools'
 export const inject = ['tools', 'pulseSeq']
@@ -233,6 +243,40 @@ export function apply(ctx: Context): void {
       const { model } = await modelAt(seq, session, undefined, exec.signal)
       if (seq.revision(session, args.rev) === undefined) throw new SequenceStateError(`There is no revision r${args.rev}.`)
       return buildResult(await seq.build(session, { cause: args.cause, author: 'model', restore: args.rev }, exec.signal), model)
+    },
+  }))
+
+  ctx.tools.register(defineTool({
+    name: 'seq_show',
+    description: 'Navigate the user\'s sequence viewer: select an element and show it. Use it when the user asks to go to, show or zoom to part of the sequence. '
+      + 'Give element (an element ID), or any of loop, ky and kz. ky/kz are k-space lines counted from the centre in units of the line spacing (ky = 0 is the k-space centre line, negative below it); '
+      + 'loop indices are acquisition order (line = 0 is the first line acquired). Without role, the block holding the ADC is selected. '
+      + `${CITE}`,
+    parameters: {
+      element: { type: 'string', description: 'Element ID to show, e.g. gre2d:readout@slice=0,line=12 or gre2d:excitation.rf.' },
+      loop: { type: 'array', description: 'Loop indices to match, e.g. [{"name":"line","index":0}]; see seq_status for loop names.', items: { type: 'object', additionalProperties: false, properties: { name: { type: 'string', required: true }, index: { type: 'integer', required: true } } } },
+      ky: { type: 'integer', description: 'Phase-encode k-space line, 0 = centre.' },
+      kz: { type: 'integer', description: 'Partition/slice-encode k-space line, 0 = centre.' },
+      role: { type: 'string', description: 'Role to select within the matched repetition, e.g. prephase; default: the ADC block.' },
+      frame: { type: 'string', enum: ['tr', 'block'], description: 'tr (default) shows the whole repetition; block only the selected block.' },
+      rev: REV,
+    },
+    output: text,
+    async execute(args, exec) {
+      const session = sessionOf(exec, 'seq_show')
+      const { revision, model } = await modelAt(seq, session, args.rev, exec.signal)
+      const result = findNavigation(model, {
+        ...(args.element === undefined ? {} : { element: args.element }),
+        ...(args.loop === undefined ? {} : { loop: Object.fromEntries(args.loop.map(l => [l.name, l.index])) }),
+        ...(args.ky === undefined ? {} : { ky: args.ky }),
+        ...(args.kz === undefined ? {} : { kz: args.kz }),
+        ...(args.role === undefined ? {} : { role: args.role }),
+        ...(args.frame === undefined ? {} : { frame: args.frame as NavigationFrame }),
+      })
+      if (!result.ok) throw new ToolArgsError([`at r${revision.rev}: ${result.reason}`])
+      appendPluginRecord(session, NAVIGATE_RECORD, { rev: revision.rev, select: result.select, view: result.view, label: result.label })
+      const more = result.matches > 1 ? ` ${result.matches} repetitions match; this is the first. Narrow it with loop.` : ''
+      return `The viewer shows [[${result.select}]] at r${revision.rev}: ${result.label}, ${time(result.view.t0)} to ${time(result.view.t1)}.${more}`
     },
   }))
 }

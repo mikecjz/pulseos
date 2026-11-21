@@ -88,3 +88,10 @@ Index: recipe.py
              b.block("prephase", gx=gx_pre, gy=gy_pre, gz=gz_reph)
              b.block("te_fill", delay=pp.make_delay(te_fill))
              readout_start = b.now()
+
+
+## seq_show
+The viewer shows [[gre2d:readout@slice=0,line=32]] at r3: ky = 0 (slice=0,line=32), 319.5 ms to 330.5 ms.
+
+## seq_show (error)
+Error: invalid arguments: at r3: no repetition matches; ky lines are -32..31

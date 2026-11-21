@@ -99,7 +99,7 @@ export function Viewer({ sessionId, store, actions, scheme }: ViewerProps) {
       {snap.pinnedRev !== null && latest !== null && snap.pinnedRev !== latest.rev && (
         <div className={styles.bannerInfo}>
           Viewing r{snap.pinnedRev} (read-only) ·
-          <button type="button" className={styles.linkButton} onClick={() => { store.pin(null) }}>Back to latest r{latest.rev}</button>
+          <button type="button" className={styles.linkButton} onClick={() => { void store.pin(null) }}>Back to latest r{latest.rev}</button>
         </div>
       )}
       {snap.model === null || snap.index === null || snap.view === null
@@ -138,7 +138,7 @@ function Toolbar({ snap, store, shown, latest }: { snap: ViewerSnapshot; store: 
           aria-label="Revision"
           value={snap.pinnedRev ?? 'latest'}
           disabled={(snap.state?.revisions.length ?? 0) === 0}
-          onChange={(event) => { store.pin(event.target.value === 'latest' ? null : Number(event.target.value)) }}
+          onChange={(event) => { void store.pin(event.target.value === 'latest' ? null : Number(event.target.value)) }}
         >
           <option value="latest">{latest === null ? 'none' : `latest (r${latest.rev})`}</option>
           {(snap.state?.revisions ?? []).toReversed().map(r => (
