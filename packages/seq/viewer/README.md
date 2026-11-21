@@ -22,7 +22,11 @@ All routes take `sessionId`; `rev` defaults to the latest revision. The browser 
 
 ### Viewer tab
 
-The viewer is a right-sidebar page type, `pulseos-sequence`. It opens by itself when a session's first revision arrives, and it also has a guide entry, "Sequence viewer".
+The viewer is a right-sidebar page type, `pulseos-sequence`.
+
+- **Opens by default:** whenever a session comes on screen without a Sequence tab, the viewer opens in the right sidebar, even before any build. A session without a revision therefore shows the empty state right away. DSH creates a session with its first message, so the start page has no viewer yet.
+- **Closing is respected:** if the user closes the Sequence tab, it stays closed for that session: on later messages, new revisions and page reloads. The choice is stored per session in `localStorage`. A Sequence tab inside a collapsed sidebar is left collapsed.
+- It is also listed in the right sidebar's guide as "Sequence viewer".
 
 - **Toolbar:**
   - sequence name;
@@ -57,7 +61,7 @@ The viewer is a right-sidebar page type, `pulseos-sequence`. It opens by itself 
   - build failed: a banner with the error and recipe line, the traceback, and "Reference error in chat", while the last good revision stays shown;
   - backend unavailable: a banner with Retry;
   - timing violations.
-- **Live update:** a new revision re-renders in place, keeping zoom and selection. A selection that no longer resolves is cleared with a toast. Changed events flash amber for 1.5 s.
+- **Live update:** a new revision re-renders in place, keeping zoom and selection; it reopens the viewer unless the user closed it for that session. A selection that no longer resolves is cleared with a toast. Changed events flash amber for 1.5 s.
 
 ### References in chat
 

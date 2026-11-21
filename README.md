@@ -44,7 +44,7 @@ pnpm run web               # DSH Web UI with the PulseOS overlay
 pnpm run dsh <profile> ... # any DSH profile with the overlay, e.g. `pnpm run dsh headless "task"`
 ```
 
-In the Web UI, ask the model to build the sequence (for example "Build the 2D GRE"). The viewer opens on the right when the first revision lands; it is also under the right sidebar's "+" as "Sequence viewer". Click an element to inspect it, press `R` or "Reference in chat" to put it into your message, or type `@` and pick from "Sequence". Without a model key, the viewer's empty state can still build the default recipe.
+In the Web UI, the sequence viewer opens on the right as soon as a session exists, showing "No sequence built yet" until something is built. Ask the model to build the sequence (for example "Build the 2D GRE"), or click "Build gre2d with defaults". If you close the viewer it stays closed for that session; reopen it from the right sidebar's "+" as "Sequence viewer". Click an element to inspect it, press `R` or "Reference in chat" to put it into your message, or type `@` and pick from "Sequence". Without a model key, the viewer's empty state can still build the default recipe.
 
 The launcher runs the DSH CLI from `dsh/` source and passes `apps/pulseos/cordis.patch.yml` as `--patch`. `DSH_HOME` defaults to `.dsh-home/` in this checkout, so development profiles and credentials stay out of `~/.dsh`; export `DSH_HOME` to override. A model call needs `DEEPSEEK_API_KEY` or a key saved on the Web Models page.
 

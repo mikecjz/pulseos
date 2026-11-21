@@ -1,7 +1,9 @@
 /**
  * Browser half of the PulseOS sequence viewer:
- * - a right-sidebar page type (`pulseos-sequence`) rendering the waveform viewer for the session,
- *   opened automatically when the session's first revision arrives;
+ * - a right-sidebar page type (`pulseos-sequence`) rendering the waveform viewer for the session.
+ *   It opens by default whenever a session comes on screen without one (empty state included),
+ *   and again when a revision arrives; a user who closes the tab keeps it closed for that session
+ *   (remembered in localStorage);
  * - `[[element id]]` chips in sent user messages (a user-text rule plus a keyed renderer);
  * - an `@` trigger source ("Sequence") that inserts reference chips into the composer, which the
  *   viewer's "Reference in chat" also uses;
@@ -35,6 +37,24 @@ export const inject = ['slots', 'sidebarRight', 'sidebarRightTabs', 'sessions', 
 const ID = '@pulseos/seq-viewer'
 const KIND = 'pulseos-sequence'
 const SOURCE = 'Sequence'
+const DISMISSED_KEY = 'pulseos.viewer.dismissed.'
+
+function dismissed(sessionId: string): boolean {
+  try {
+    return localStorage.getItem(DISMISSED_KEY + sessionId) === '1'
+  } catch {
+    // Storage unavailable (privacy mode): nothing was remembered.
+    return false
+  }
+}
+
+function setDismissed(sessionId: string): void {
+  try {
+    localStorage.setItem(DISMISSED_KEY + sessionId, '1')
+  } catch {
+    // Storage unavailable: the choice lasts for this page only (autoOpened below).
+  }
+}
 
 const referenceRule: UserTextRule<'pulseos-ref'> = {
   id: 'pulseos-ref',
@@ -84,6 +104,38 @@ export function apply(ctx: Context): void {
     if (id !== undefined) void storeFor(sessionId).reveal(id, rev)
   }
 
+  /**
+   * Open the viewer by default, once per session and page: skipped when the user closed it for this
+   * session, or when a Sequence tab already exists (a collapsed sidebar stays collapsed). The
+   * sidebar mints a session's store while rendering it, so the open retries over a few frames.
+   */
+  const autoOpen = (sessionId: string, attempt = 0) => {
+    if (autoOpened.has(sessionId) || dismissed(sessionId)) return
+    if (ctx.sidebarRight.mounted.getSnapshot() !== sessionId) return
+    try {
+      autoOpened.add(sessionId)
+      if (!tabOpen(sessionId)) ctx.sidebarRight.openTabIn(sessionId as SessionId, KIND)
+    } catch (error) {
+      // The session's sidebar store is not minted yet; try again after it renders.
+      autoOpened.delete(sessionId)
+      if (attempt < 20) setTimeout(() => { autoOpen(sessionId, attempt + 1) }, 100)
+      else console.warn('pulseos-viewer: could not open the viewer by default', error)
+    }
+  }
+  ctx.effect(() => {
+    const follow = () => {
+      const sessionId = ctx.sidebarRight.mounted.getSnapshot()
+      if (sessionId !== undefined) setTimeout(() => { autoOpen(sessionId) }, 0)
+    }
+    const stop = ctx.sidebarRight.mounted.subscribe(follow)
+    follow()
+    return stop
+  }, 'pulseos-viewer: open by default')
+  ctx.effect(() => ctx.sidebarRight.registerCloseHandler(KIND, (sessionId) => {
+    setDismissed(sessionId)
+    autoOpened.add(sessionId)
+  }), 'pulseos-viewer: remember close')
+
   // Follow the session's event stream: PulseOS records and seq_* tool activity refresh the viewer.
   function watch(sessionId: string, store: ViewerStore): void {
     if (watched.has(sessionId)) return
@@ -103,10 +155,7 @@ export function apply(ctx: Context): void {
         else if (type.startsWith('tool/') && JSON.stringify(entry.event.data).includes('"seq_')) relevant = true
       }
       if (relevant) store.scheduleRefresh()
-      if (revision && change.kind === 'append' && !first && !autoOpened.has(sessionId) && !tabOpen(sessionId)) {
-        autoOpened.add(sessionId)
-        openViewer(sessionId)
-      }
+      if (revision && change.kind === 'append' && !first && !dismissed(sessionId) && !tabOpen(sessionId)) openViewer(sessionId)
       first = false
     }
     watched.set(sessionId, binding.eventSource.subscribe(onChange))
