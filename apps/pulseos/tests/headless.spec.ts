@@ -29,6 +29,8 @@ const SCRIPT: ScriptStep[] = [
   { tool: 'seq_edit_recipe', input: { edits: [{ old_text: 'import math\n', new_text: 'import math\nimport os\n' }], cause: 'try a disallowed import' } },
   { tool: 'seq_get_element', input: { id: 'gre2d:excitation.rf', rev: 2 } },
   { tool: 'seq_diff', input: { from: 2 } },
+  { tool: 'seq_show', input: { ky: 0 } },
+  { tool: 'seq_show', input: { ky: 99 } },
   { text: 'Done: TE is 5 ms and the flip angle 25 degrees at [[gre2d:rf_excite.rf]].' },
 ]
 
@@ -72,6 +74,7 @@ describe('dsh headless with the PulseOS overlay', () => {
       ['seq_status', false], ['seq_build', false], ['seq_status', false], ['seq_get_element', false],
       ['seq_set_params', false], ['seq_set_params', true], ['seq_check_timing', false],
       ['seq_edit_recipe', false], ['seq_edit_recipe', true], ['seq_get_element', false], ['seq_diff', false],
+      ['seq_show', false], ['seq_show', true],
     ])
     expect(results[1]!.text).toContain('Built r1 (init, model)')
     expect(results[2]!.text).toContain('gre2d:param.TE: TE = 4.2 ms')
@@ -81,6 +84,8 @@ describe('dsh headless with the PulseOS overlay', () => {
     expect(results[8]!.text).toContain('import of "os" is not allowed')
     expect(results[9]!.text).toContain('At r2:')
     expect(results[10]!.text).toContain('+            b.block("rf_excite", formerly="excitation", rf=rf, gz=gz)')
+    expect(results[11]!.text).toContain('The viewer shows [[gre2d:readout@slice=0,line=32]] at r3: ky = 0 (slice=0,line=32)')
+    expect(results[12]!.text).toContain('no repetition matches; ky lines are -32..31')
     await expect(results.map(r => `## ${r.tool}${r.isError ? ' (error)' : ''}\n${normalize(r.text)}`).join('\n\n'))
       .toMatchFileSnapshot('./__snapshots__/headless-tool-results.md')
   })

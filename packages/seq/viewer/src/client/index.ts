@@ -18,7 +18,7 @@ import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-api-session-controller/client'
 import type {} from '@deepseek-ai/dsh-client-ui-session/client'
 import { createElement } from 'react'
-import { findReferences, formatReference } from '@pulseos/seq-protocol'
+import { findReferences, formatReference, NAVIGATE_RECORD, type NavigateRecord } from '@pulseos/seq-protocol'
 import { Chip, chipLabel } from './Chip.tsx'
 import { startHighlights } from './highlights.ts'
 import { ViewerStore } from './store.ts'
@@ -148,15 +148,23 @@ export function apply(ctx: Context): void {
       if (change.kind === 'settle-assistant') return
       let relevant = change.kind === 'replace'
       let revision = false
+      let navigate: NavigateRecord | undefined
       for (const entry of change.entries) {
         if (entry.type !== 'event') continue
         const type = String(entry.event.type)
-        if (type.startsWith('plugin:pulseos/')) { relevant = true; if (type === 'plugin:pulseos/revision') revision = true }
+        if (type === NAVIGATE_RECORD) navigate = entry.event.data as NavigateRecord
+        else if (type.startsWith('plugin:pulseos/')) { relevant = true; if (type === 'plugin:pulseos/revision') revision = true }
         else if (type.startsWith('tool/') && JSON.stringify(entry.event.data).includes('"seq_')) relevant = true
       }
-      if (relevant) store.scheduleRefresh()
-      if (revision && change.kind === 'append' && !first && !dismissed(sessionId) && !tabOpen(sessionId)) openViewer(sessionId)
+      const live = change.kind === 'append' && !first
       first = false
+      // A navigation is an explicit request, so it reopens a closed viewer; replayed history does not move it.
+      if (navigate !== undefined && live) {
+        if (!tabOpen(sessionId)) ctx.sidebarRight.openTabIn(sessionId as SessionId, KIND)
+        void store.navigate(navigate)
+      }
+      if (relevant) store.scheduleRefresh()
+      if (revision && live && !dismissed(sessionId) && !tabOpen(sessionId)) openViewer(sessionId)
     }
     watched.set(sessionId, binding.eventSource.subscribe(onChange))
   }

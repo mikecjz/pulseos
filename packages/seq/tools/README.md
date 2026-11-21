@@ -13,6 +13,7 @@ Model-facing tools for the session's pulse sequence. Every tool acts on the call
 | `seq_check_timing` | pypulseq timing errors with element IDs |
 | `seq_diff` | Parameter changes, role changes and the unified recipe diff between two revisions |
 | `seq_restore` | Rebuild an earlier revision as a new one |
+| `seq_show` | Navigate the user's viewer: select an element and show it, found by element ID, loop indices (`line = 0` is the first line acquired) or k-space line (`ky = 0` is the centre line). Appends a `plugin:pulseos/navigate` record that the Web viewer applies; nothing is rebuilt |
 
 These are expected failures: a failed build (with error kind and recipe line), a missing sequence or revision, and invalid arguments. They are thrown as `HarnessError` subclasses (`PULSEOS_BUILD_FAILED`, `PULSEOS_NO_SEQUENCE`, `INVALID_ARGS`), so the model sees `Error: ...`. After a failed build the current revision is unchanged.
 
@@ -22,7 +23,7 @@ These are expected failures: a failed build (with error kind and recipe line), a
 
 #### What the model sees
 
-Nine tool schemas, whose descriptions are written in `src/index.ts`. `seq_status`, `seq_get_element` and `seq_check_timing` all end with this sentence:
+Ten tool schemas, whose descriptions are written in `src/index.ts`. `seq_status`, `seq_get_element`, `seq_check_timing` and `seq_show` all end with this sentence:
 
 ##### Verbatim citation instruction
 
@@ -32,7 +33,7 @@ Cite sequence elements in replies as [[<element id>]], e.g. [[gre2d:excitation.r
 
 #### Token effect
 
-The nine schemas add a fixed cost to every request: about 1–1.5k tokens of descriptions and parameter schemas (estimated from their character count).
+The ten schemas add a fixed cost to every request: about 1.3–1.8k tokens of descriptions and parameter schemas (estimated from their character count).
 
 #### KV Cache effect
 
@@ -51,6 +52,7 @@ Results grow with the sequence:
 - `seq_get_recipe`: the whole recipe.
 - `seq_check_timing`: at most 20 errors.
 - `seq_get_element`: the first instance plus a summary of what varies.
+- `seq_show`: one line.
 
 #### KV Cache effect
 
