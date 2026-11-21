@@ -162,8 +162,6 @@ export function drawTracks(g: CanvasRenderingContext2D, input: DrawInput): void 
     if (r.key === 'gz' || r.key === 'gy' || r.key === 'gx') {
       const zero = r.y + r.h / 2
       const yOf = (v: number) => zero - (v / gradScale) * (r.h / 2 - 4)
-      g.strokeStyle = p.line2
-      g.beginPath(); g.moveTo(0, zero + 0.5); g.lineTo(width, zero + 0.5); g.stroke()
       if (input.gradLimit > 0) {
         g.setLineDash([3, 4]); g.strokeStyle = alpha(p.bad, 0.45)
         for (const v of [input.gradLimit, -input.gradLimit]) { g.beginPath(); g.moveTo(0, Math.round(yOf(v)) + 0.5); g.lineTo(width, Math.round(yOf(v)) + 0.5); g.stroke() }
