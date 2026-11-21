@@ -19,6 +19,7 @@
     { "path": "./dsh/packages/client/ui-session" },
     { "path": "./dsh/packages/api/session-controller/tsconfig.client.json" },
     { "path": "./dsh/packages/client/ui-conversation/tsconfig.client.json" },
-    { "path": "./dsh/packages/client/ui-input-trigger" }
+    { "path": "./dsh/packages/client/ui-input-trigger" },
+    { "path": "./dsh/packages/client/ui-theme/tsconfig.client.json" }
   ]
 }
