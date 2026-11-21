@@ -2,8 +2,9 @@
  * Browser test of M4 on the real composition: `dsh web` with the PulseOS overlay, a scripted keyless
  * model, and Chromium. Covers: the viewer opens when the first revision lands, click-to-select with
  * the inspector, "Reference in chat" into the composer, the sent chip, chip hover, the live
- * re-render on a new revision (chip turns "changed"), highlighted assistant references, and
- * following DSH's light and dark theme live.
+ * re-render on a new revision (chip turns "changed"), highlighted assistant references,
+ * following DSH's light and dark theme live, and chat navigation ("go to ky = 0 block" ->
+ * seq_show selects and frames that block).
  * Set PULSEOS_SCREENSHOTS=<dir> to keep screenshots.
  */
 import { spawn, spawnSync, type ChildProcess } from 'node:child_process'
@@ -14,7 +15,7 @@ import { fileURLToPath } from 'node:url'
 import { chromium, type Browser, type Page } from 'playwright-core'
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
 import { diagnose, findChromium } from './browser.ts'
-import { startScriptedLlm, type ScriptedLlm } from './scripted-llm.ts'
+import { startScriptedLlm, toolResults, type ScriptedLlm } from './scripted-llm.ts'
 
 const repo = fileURLToPath(new URL('../../../', import.meta.url))
 const executablePath = findChromium()
@@ -37,6 +38,8 @@ describe.skipIf(executablePath === undefined)('sequence viewer in dsh web', () =
       { text: 'Built r1. The excitation pulse is [[gre2d:excitation.rf]].' },
       { tool: 'seq_set_params', input: { params: [{ name: 'flip_angle', value: 30 }], cause: 'flip 15 -> 30 deg' } },
       { text: 'Raised [[gre2d:param.flip_angle]] to 30 degrees; [[gre2d:nope.rf]] does not exist.' },
+      { tool: 'seq_show', input: { ky: 0 } },
+      { text: 'This is the k-space centre line.' },
     ])
     scratch = mkdtempSync(join(tmpdir(), 'pulseos-web-'))
     const overlay = join(scratch, 'test.patch.yml')
@@ -154,4 +157,21 @@ describe.skipIf(executablePath === undefined)('sequence viewer in dsh web', () =
     await page.waitForTimeout(200)
     await shot(`6-theme-${scheme}`)
   })
+
+  it('navigates the viewer from chat: "go to ky = 0 block" selects and shows that block', async () => {
+    const composer = page.locator('[contenteditable="true"]').last()
+    await composer.click()
+    await page.keyboard.type('go to ky = 0 block')
+    await page.keyboard.press('Enter')
+    await page.getByText('This is the k-space centre line.').waitFor({ timeout: 60_000 })
+    // ky = 0 is phase-encode line 32 of 64 (TR 10 ms): its readout block is selected and its TR framed.
+    const inspector = page.getByRole('region', { name: 'Inspector' })
+    await inspector.getByText('gre2d:readout@slice=0,line=32', { exact: true }).waitFor({ state: 'visible', timeout: 15_000 })
+    await expect.poll(() => page.locator('[data-pulseos-viewer] canvas[role="img"]').getAttribute('aria-label'), { timeout: 15_000 })
+      .toBe('Waveforms from 319.5 ms to 330.5 ms')
+    const result = toolResults(llm.requests.at(-1)!).at(-1)!
+    expect(result).toMatchObject({ tool: 'seq_show', isError: false })
+    expect(result.text).toContain('The viewer shows [[gre2d:readout@slice=0,line=32]] at r2: ky = 0 (slice=0,line=32)')
+    await shot('7-navigate-ky0')
+  }, 90_000)
 })
