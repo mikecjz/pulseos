@@ -1,6 +1,6 @@
 # PulseOS brand assets
 
-The mark is a truncated **sinc RF excitation pulse** on the sequence timeline. Its main lobe is in the accent colour, the way an element you select in the PulseOS viewer is highlighted. The wordmark is **Pulse** in Inter Display SemiBold and **OS** in Inter Display Light. All text is converted to outlines, so the files need no fonts.
+The mark is a truncated **sinc RF excitation pulse** on the sequence timeline. Its main lobe is in the accent colour, the way an element you select in the PulseOS viewer is highlighted. The wordmark is lowercase **pulseos** in wide [Saira](https://github.com/Omnibus-Type/Saira) Medium, in the style of the DeepSeek wordmark: the crossbar of the `e` stops short of the bowl, and the `p` is redrawn by hand so its bowl opens at the bottom-left. All text is converted to outlines, so the files need no fonts.
 
 `light` = artwork for light backgrounds, `dark` = artwork for dark backgrounds.
 
@@ -10,8 +10,6 @@ The mark is a truncated **sinc RF excitation pulse** on the sequence timeline. I
 | `logo/pulseos-mark-{light,dark}.svg/.png` | Symbol only, transparent, 1024 px PNG |
 | `logo/pulseos-icon-{light,dark}.svg/.png` | Rounded tile for app icons and avatars (light tile / dark tile), 1024 px PNG |
 | `banner/pulseos-banner-{light,dark}.svg/.png` | 1280×640 banner (GitHub social preview size). PNG is rendered at 2× |
-| `logo/pulseos-logo-saira-{light,dark}.svg/.png` | **Alternate** lockup: lowercase `pulseos` in wide Saira Medium (DeepSeek-style type) |
-| `banner/pulseos-banner-saira-{light,dark}.svg/.png` | **Alternate** banner, set in Saira |
 | `src/generate.py` | Generates all of the above |
 
 ## Colours
@@ -36,6 +34,8 @@ python3 assets/src/generate.py         # SVGs
 python3 assets/src/generate.py --png   # SVGs + PNGs (needs Chrome/Chromium on PATH)
 ```
 
-Needs Python 3 with `fontTools`, and Inter installed under `/usr/share/fonts/opentype/inter` (edit `FONT_DIR` otherwise). Inter is under the SIL Open Font License 1.1, which allows use in logos.
+Needs Python 3 with `fontTools` and [skia-pathops](https://pypi.org/project/skia-pathops/) (`pip install fonttools skia-pathops`).
 
-The alternate set uses [Saira](https://github.com/Omnibus-Type/Saira) (SIL OFL 1.1, no reserved font name). On first run the script downloads the variable font from the Google Fonts repository into `~/.cache/pulseos-brand/`, then instances it (wordmark: weight 520, width 118). The `p` is redrawn by hand in the script (`_draw_open_p`), so its bowl opens at the bottom-left. The break in the `e` is cut with [skia-pathops](https://pypi.org/project/skia-pathops/) (`pip install skia-pathops`); edit `SAIRA_CUTS` / `SAIRA_DEFAULT_CUTS` in the script to change it.
+Type is [Saira](https://github.com/Omnibus-Type/Saira) (SIL OFL 1.1, no reserved font name, so logo use and modification are allowed). On first run the script downloads the variable font from the Google Fonts repository into `~/.cache/pulseos-brand/`, then instances it: weight 520 and width 118 for the wordmark, width 104 for the banner text.
+
+The letter changes are in the script. The `e` is cut with skia-pathops (`SAIRA_CUTS`). The `p` is a hand-drawn outline (`_draw_open_p`), tied to the 520/118 instance, and the script stops if that instance changes. `SAIRA_DEFAULT_CUTS` chooses which letters are changed; an optional cut through the `s` is defined but off.

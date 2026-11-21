@@ -5,8 +5,10 @@ The mark is a truncated sinc RF excitation pulse sitting on the sequence
 timeline. Its main lobe is drawn in the accent colour, the way an element
 selected in the PulseOS viewer is highlighted.
 
-Text is converted to outlines (Inter Display, SIL OFL 1.1), so the SVGs have
-no font dependency. Re-run after changing anything here:
+The wordmark is lowercase "pulseos" in wide Saira (SIL OFL 1.1), with the
+crossbar of the "e" cut short and the "p" redrawn with an open bowl, after the
+DeepSeek wordmark. Text is converted to outlines, so the SVGs have no font
+dependency. Re-run after changing anything here:
 
     python3 assets/src/generate.py            # writes the SVGs
     python3 assets/src/generate.py --png      # also renders PNGs (needs Chrome)
@@ -27,11 +29,10 @@ from fontTools.pens.transformPen import TransformPen
 from fontTools.ttLib import TTFont
 
 ROOT = Path(__file__).resolve().parents[1]  # assets/
-FONT_DIR = Path("/usr/share/fonts/opentype/inter")
 
-# Alternate wordmark: Saira (SIL OFL 1.1, https://github.com/Omnibus-Type/Saira),
-# a squarish grotesk close in spirit to the DeepSeek wordmark. The variable font
-# is downloaded once and instanced locally.
+# Saira (SIL OFL 1.1, https://github.com/Omnibus-Type/Saira), a squarish grotesk
+# close in spirit to the DeepSeek wordmark. The variable font is downloaded once
+# and instanced locally.
 SAIRA_URL = "https://github.com/google/fonts/raw/main/ofl/saira/Saira%5Bwdth,wght%5D.ttf"
 CACHE = Path.home() / ".cache" / "pulseos-brand"
 
@@ -132,12 +133,11 @@ def symbol_group(ink: str, accent: str, stroke: float = STROKE) -> str:
 
 
 class Type:
-    def __init__(self, name: "str | TTFont"):
-        self.font = name if isinstance(name, TTFont) else TTFont(FONT_DIR / name)
+    def __init__(self, font: TTFont):
+        self.font = font
         self.gs = self.font.getGlyphSet()
         self.cmap = self.font.getBestCmap()
         self.upm = self.font["head"].unitsPerEm
-        self.cap = self.font["OS/2"].sCapHeight
         self.xh = self.font["OS/2"].sxHeight
         self.kern = self._pair_kerning()
 
@@ -213,24 +213,6 @@ def svg(w: float, h: float, body: str, title: str) -> str:
     )
 
 
-class InterWordmark:
-    """"Pulse" Inter Display SemiBold + "OS" Inter Display Light."""
-
-    def __init__(self):
-        self.bold = Type("InterDisplay-SemiBold.otf")
-        self.light = Type("InterDisplay-Light.otf")
-        self.text = Type("Inter-Regular.otf")
-        self.text_med = Type("Inter-Medium.otf")
-
-    def __call__(self, ink: str, scale: float) -> tuple[str, float]:
-        cap = 92.0 * scale
-        size = cap / self.bold.cap * self.bold.upm
-        d1, w1 = self.bold.path("Pulse", size, 0, 0, tracking=-0.012)
-        gap = size * 0.035
-        d2, w2 = self.light.path("OS", size, w1 + gap, 0, tracking=-0.006)
-        return (f'<path d="{d1}" fill="{ink}"/><path d="{d2}" fill="{ink}"/>', w1 + gap + w2)
-
-
 def _cut_glyph(glyph, rects):
     """Glyph outline minus rectangles (boolean difference via skia-pathops)."""
     import pathops
@@ -300,8 +282,7 @@ class SairaWordmark:
 
 
 def build(png: bool) -> list[Path]:
-    # suffix -> wordmark style; "" is the primary (Inter) set
-    styles = {"": InterWordmark(), "-saira": SairaWordmark()}
+    wordmark = SairaWordmark()
     written: list[Path] = []
 
     def save(rel: str, content: str) -> None:
@@ -325,20 +306,19 @@ def build(png: bool) -> list[Path]:
                 f'{symbol_group(tile_ink, tile_acc, STROKE * 1.12)}</g>')
         save(f"logo/pulseos-icon-{mode}.svg", svg(256, 256, icon, "PulseOS"))
 
-        for suffix, wordmark in styles.items():
-            # horizontal lockup: wordmark baseline sits on the pulse timeline
-            wm, ww = wordmark(c["ink"], 1.0)
-            gap = 40.0
-            base_shift = BASE_Y + STROKE / 2  # text baseline on the bottom edge of the timeline
-            w = X1 + STROKE / 2 + gap + ww + 8
-            body = (f'<g transform="translate({-X0 + STROKE / 2 + 4:.2f} 0)">'
-                    f'{symbol_group(c["ink"], c["accent"])}'
-                    f'<g transform="translate({X1 + STROKE / 2 + gap:.2f} {base_shift:.2f})">{wm}</g></g>')
-            save(f"logo/pulseos-logo{suffix}-{mode}.svg",
-                 svg(round(w - X0 + STROKE / 2 + 4), 256, body, "PulseOS"))
+        # horizontal lockup: wordmark baseline sits on the pulse timeline
+        wm, ww = wordmark(c["ink"], 1.0)
+        gap = 40.0
+        base_shift = BASE_Y + STROKE / 2  # text baseline on the bottom edge of the timeline
+        w = X1 + STROKE / 2 + gap + ww + 8
+        body = (f'<g transform="translate({-X0 + STROKE / 2 + 4:.2f} 0)">'
+                f'{symbol_group(c["ink"], c["accent"])}'
+                f'<g transform="translate({X1 + STROKE / 2 + gap:.2f} {base_shift:.2f})">{wm}</g></g>')
+        save(f"logo/pulseos-logo-{mode}.svg",
+             svg(round(w - X0 + STROKE / 2 + 4), 256, body, "PulseOS"))
 
-            # banner 1280x640 (GitHub social preview size)
-            save(f"banner/pulseos-banner{suffix}-{mode}.svg", banner(c, mode, wordmark))
+        # banner 1280x640 (GitHub social preview size)
+        save(f"banner/pulseos-banner-{mode}.svg", banner(c, mode, wordmark))
 
     if png:
         render(written)
