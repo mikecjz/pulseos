@@ -1,0 +1,28 @@
+{
+  "name": "@pulseos/brand",
+  "description": "PulseOS branding for the DSH Web client: sidebar mark and wordmark, blank-session hero banner",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./client": {
+      "default": "./lib/client.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-sidebar",
+        "@deepseek-ai/dsh-client-ui-conversation"
+      ]
+    }
+  },
+  "scripts": {
+    "bundle": "node ../../../dsh/node_modules/tsdown/dist/run.mjs"
+  },
+  "license": "MIT"
+}

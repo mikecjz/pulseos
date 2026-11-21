@@ -10,9 +10,10 @@
     "typeRoots": ["./dsh/scripts/types", "./dsh/node_modules/@types"],
     "types": ["client-build-environment", "client-assets", "node"]
   },
-  "include": ["packages/seq/viewer/src/client", "packages/seq/viewer/tests"],
+  "include": ["packages/seq/viewer/src/client", "packages/seq/viewer/tests", "packages/app/brand/src/client"],
   "references": [
     { "path": "./dsh/vendor/cordis" },
+    { "path": "./dsh/packages/client/ui-sidebar" },
     { "path": "./dsh/packages/client/ui-sidebar-right" },
     { "path": "./dsh/packages/client/ui-renderer" },
     { "path": "./dsh/packages/client/ui-session" },

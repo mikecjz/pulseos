@@ -16,7 +16,7 @@
     "smoke:boot": "node scripts/smoke-boot.mjs",
     "dsh": "node scripts/dsh.mjs",
     "web": "node scripts/dsh.mjs web",
-    "build": "pnpm --filter @pulseos/seq-viewer run bundle"
+    "build": "pnpm --filter @pulseos/seq-viewer --filter @pulseos/brand run bundle"
   },
   "devDependencies": {
     "@types/node": "^22.20.1",
