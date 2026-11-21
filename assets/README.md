@@ -1,6 +1,6 @@
 # PulseOS brand assets
 
-The mark is a truncated **sinc RF excitation pulse** on the sequence timeline. Its main lobe is in the accent colour, the way an element you select in the PulseOS viewer is highlighted. The wordmark is lowercase **pulseos** in wide [Saira](https://github.com/Omnibus-Type/Saira) Medium, in the style of the DeepSeek wordmark: the crossbar of the `e` stops short of the bowl, and the `p` is redrawn by hand so its bowl opens at the bottom-left. All text is converted to outlines, so the files need no fonts.
+The mark is a truncated **sinc RF excitation pulse** on the sequence timeline. It is one continuous stroke in the same ink as the wordmark; the identity is monochrome. The wordmark is lowercase **pulseos** in wide [Saira](https://github.com/Omnibus-Type/Saira) Medium, in the style of the DeepSeek wordmark: the crossbar of the `e` stops short of the bowl, and the `p` is redrawn by hand so its bowl opens at the bottom-left. All text is converted to outlines, so the files need no fonts.
 
 `light` = artwork for light backgrounds, `dark` = artwork for dark backgrounds.
 
@@ -17,15 +17,14 @@ The mark is a truncated **sinc RF excitation pulse** on the sequence timeline. I
 | Role | Light | Dark |
 |---|---|---|
 | Ink | `#141829` | `#F1F2F7` |
-| Accent (main lobe) | `#F2542D` | `#FF7A50` |
 | Muted text | `#5B6178` | `#A3A8BD` |
 | Background | `#FFFFFF` / `#F4F5F9` | `#0E1120` / `#161A2E` |
 
 ## Usage
 
-- Clear space around the logo: at least the height of the main lobe's stroke × 2 on every side.
+- Clear space around the logo: at least twice the pulse's stroke width on every side.
 - Minimum size: lockup 120 px wide; symbol 24 px. Below 24 px the side lobes merge, so prefer the icon tile.
-- Don't recolour the main lobe or the ink separately, stretch the pulse, or put the light artwork on dark backgrounds.
+- Don't recolour parts of the pulse or the wordmark separately, add colour accents, stretch the pulse, or put the light artwork on dark backgrounds.
 
 ## Regenerating
 

@@ -2,8 +2,7 @@
 """Generate the PulseOS logo and banner SVGs.
 
 The mark is a truncated sinc RF excitation pulse sitting on the sequence
-timeline. Its main lobe is drawn in the accent colour, the way an element
-selected in the PulseOS viewer is highlighted.
+timeline, drawn as one continuous monochrome stroke in the wordmark's ink.
 
 The wordmark is lowercase "pulseos" in wide Saira (SIL OFL 1.1), with the
 crossbar of the "e" cut short and the "p" redrawn with an open bowl, after the
@@ -50,7 +49,6 @@ def saira(wght: float, wdth: float) -> TTFont:
 PALETTE = {
     "light": {  # artwork for light backgrounds
         "ink": "#141829",
-        "accent": "#F2542D",
         "muted": "#5B6178",
         "bg": "#FFFFFF",
         "bg2": "#F4F5F9",
@@ -58,7 +56,6 @@ PALETTE = {
     },
     "dark": {  # artwork for dark backgrounds
         "ink": "#F1F2F7",
-        "accent": "#FF7A50",
         "muted": "#A3A8BD",
         "bg": "#0E1120",
         "bg2": "#161A2E",
@@ -111,22 +108,18 @@ def _samples(a: float, b: float, n: int) -> list[float]:
     return [a + (b - a) * i / n for i in range(n + 1)]
 
 
-def pulse_paths() -> tuple[str, str, str]:
-    """Return (left side, main lobe, right side) as stroke paths on the 256 grid."""
-    left = f"M{X0} {BASE_Y}H{PX0}" + _bezier_path(_samples(-3, -1, 16), move=False)
-    main = _bezier_path(_samples(-1, 1, 12))
-    right = _bezier_path(_samples(1, 3, 16)) + f"H{X1}"
-    return left, main, right
+def pulse_path() -> str:
+    """The pulse as one continuous stroke path on the 256 grid."""
+    return (f"M{X0} {BASE_Y}H{PX0}"
+            + _bezier_path(_samples(-3, -1, 16), move=False)
+            + _bezier_path(_samples(-1, 1, 12), move=False)
+            + _bezier_path(_samples(1, 3, 16), move=False)
+            + f"H{X1}")
 
 
-def symbol_group(ink: str, accent: str, stroke: float = STROKE) -> str:
-    left, main, right = pulse_paths()
-    common = f'fill="none" stroke-width="{stroke}" stroke-linejoin="round"'
-    return (
-        f'<path d="{left}" stroke="{ink}" {common} stroke-linecap="round"/>'
-        f'<path d="{right}" stroke="{ink}" {common} stroke-linecap="round"/>'
-        f'<path d="{main}" stroke="{accent}" {common} stroke-linecap="butt"/>'
-    )
+def symbol_group(ink: str, stroke: float = STROKE) -> str:
+    return (f'<path d="{pulse_path()}" fill="none" stroke="{ink}" stroke-width="{stroke}" '
+            f'stroke-linejoin="round" stroke-linecap="round"/>')
 
 
 # --------------------------------------------------------------------------- type
@@ -294,16 +287,15 @@ def build(png: bool) -> list[Path]:
     for mode, c in PALETTE.items():
         # symbol, transparent
         save(f"logo/pulseos-mark-{mode}.svg",
-             svg(256, 256, symbol_group(c["ink"], c["accent"]), "PulseOS"))
+             svg(256, 256, symbol_group(c["ink"]), "PulseOS"))
 
         # app icon / avatar tile: the tile flips with the mode
         # "dark" icon = dark tile, "light" icon = light tile
         tile_bg = PALETTE["light"]["bg2"] if mode == "light" else PALETTE["dark"]["bg"]
         tile_ink = PALETTE[mode]["ink"]
-        tile_acc = PALETTE[mode]["accent"]
         icon = (f'<rect width="256" height="256" rx="56" fill="{tile_bg}"/>'
                 f'<g transform="translate(128 132) scale(0.78) translate(-128 -128)">'
-                f'{symbol_group(tile_ink, tile_acc, STROKE * 1.12)}</g>')
+                f'{symbol_group(tile_ink, STROKE * 1.12)}</g>')
         save(f"logo/pulseos-icon-{mode}.svg", svg(256, 256, icon, "PulseOS"))
 
         # horizontal lockup: wordmark baseline sits on the pulse timeline
@@ -312,7 +304,7 @@ def build(png: bool) -> list[Path]:
         base_shift = BASE_Y + STROKE / 2  # text baseline on the bottom edge of the timeline
         w = X1 + STROKE / 2 + gap + ww + 8
         body = (f'<g transform="translate({-X0 + STROKE / 2 + 4:.2f} 0)">'
-                f'{symbol_group(c["ink"], c["accent"])}'
+                f'{symbol_group(c["ink"])}'
                 f'<g transform="translate({X1 + STROKE / 2 + gap:.2f} {base_shift:.2f})">{wm}</g></g>')
         save(f"logo/pulseos-logo-{mode}.svg",
              svg(round(w - X0 + STROKE / 2 + 4), 256, body, "PulseOS"))
@@ -356,14 +348,14 @@ def banner(c: dict, mode: str, wordmark) -> str:
     # the real pulse on the RF rail, in brand colours, echoing the mark
     parts.append(
         f'<g transform="translate(925 {150 - BASE_Y * 0.62:.2f}) scale(0.62) translate(-128 0)" opacity="{0.9 if mode == "light" else 0.95}">'
-        f'<g opacity="0.35">{symbol_group(c["rail"], c["accent"], 6)}</g></g>'
+        f'<g opacity="0.35">{symbol_group(c["rail"], 6)}</g></g>'
     )
 
     # lockup
     x, ymid = 96, 262
     k = 0.8
     parts.append(f'<g transform="translate({x - (X0 - STROKE / 2) * k:.2f} {ymid - 128 * k:.2f}) scale({k})">'
-                 f'{symbol_group(c["ink"], c["accent"])}</g>')
+                 f'{symbol_group(c["ink"])}</g>')
     base = ymid - 128 * k + (BASE_Y + STROKE / 2) * k
     wm, ww = wordmark(c["ink"], k)
     parts.append(f'<g transform="translate({x + (X1 - X0 + STROKE) * k + 40 * k:.2f} {base:.2f})">{wm}</g>')
