@@ -2,7 +2,8 @@
  * Browser test of M4 on the real composition: `dsh web` with the PulseOS overlay, a scripted keyless
  * model, and Chromium. Covers: the viewer opens when the first revision lands, click-to-select with
  * the inspector, "Reference in chat" into the composer, the sent chip, chip hover, the live
- * re-render on a new revision (chip turns "changed"), and highlighted assistant references.
+ * re-render on a new revision (chip turns "changed"), highlighted assistant references, and
+ * following DSH's light and dark theme live.
  * Set PULSEOS_SCREENSHOTS=<dir> to keep screenshots.
  */
 import { spawn, spawnSync, type ChildProcess } from 'node:child_process'
@@ -128,5 +129,29 @@ describe.skipIf(executablePath === undefined)('sequence viewer in dsh web', () =
       return [registry.get('pulseos-ref')?.size ?? 0, registry.get('pulseos-ref-bad')?.size ?? 0]
     }), { timeout: 20_000 }).toEqual([2, 1])
     await shot('5-assistant-references')
+  })
+
+  // Background colors: DARK.bg and LIGHT.bg in packages/seq/viewer/src/client/draw.ts.
+  it.each([['dark', '#0d1015'], ['light', '#fbfcfd'], ['dark', '#0d1015']] as const)('follows DSH switching to %s mode live', async (scheme, bg) => {
+    // DSH's theme preference defaults to "system", so the OS scheme switches the whole client.
+    await page.emulateMedia({ colorScheme: scheme })
+    await expect.poll(async () => (await page.locator('body').getAttribute('data-ds-dark-theme')) !== null, { timeout: 10_000 }).toBe(scheme === 'dark')
+    const viewer = page.locator('[data-pulseos-viewer]')
+    await expect.poll(() => viewer.getAttribute('data-theme'), { timeout: 10_000 }).toBe(scheme)
+    expect(await viewer.getByRole('button', { name: /theme/i }).count()).toBe(0)
+    // The waveform canvas is repainted with the scheme's background.
+    // Evaluated in the page as source text: this Node program has no DOM types.
+    const pixel = () => page.evaluate(`(() => {
+      const [r, g, b] = document.querySelector('[data-pulseos-viewer] canvas[role="img"]').getContext('2d').getImageData(2, 2, 1, 1).data
+      return '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('')
+    })()`)
+    await expect.poll(pixel, { timeout: 10_000 }).toBe(bg)
+    // Chips in the conversation follow the same palette.
+    const chip = page.locator('[data-pulseos-chip="gre2d:excitation.rf"]').first()
+    const dot = await chip.locator('span').first().evaluate(el => (globalThis as unknown as { getComputedStyle(e: typeof el): { backgroundColor: string } }).getComputedStyle(el).backgroundColor)
+    expect(dot).toBe(scheme === 'dark' ? 'rgb(242, 193, 78)' : 'rgb(183, 121, 31)')
+    await page.mouse.move(0, 0)
+    await page.waitForTimeout(200)
+    await shot(`6-theme-${scheme}`)
   })
 })

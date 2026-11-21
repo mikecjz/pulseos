@@ -35,7 +35,6 @@ The viewer is a right-sidebar page type, `pulseos-sequence`.
   - TR stepping;
   - scanner-profile badge (the limits are in its tooltip);
   - timing counter, which cycles through violations;
-  - dark/light switch (dark by default);
   - `.seq` export.
 - **Overview strip:** the whole sequence with alternating repetition shading, RF positions and a draggable viewport brush.
 - **Tracks** in the default order RF |B1|, RF phase (collapsed, expandable), Gz, Gy, Gx, ADC, under a time ruler and a lane of pulseq blocks labelled by role.
@@ -61,6 +60,7 @@ The viewer is a right-sidebar page type, `pulseos-sequence`.
   - build failed: a banner with the error and recipe line, the traceback, and "Reference error in chat", while the last good revision stays shown;
   - backend unavailable: a banner with Retry;
   - timing violations.
+- **Theme:** the viewer follows DSH's active theme. It reads the color scheme from DSH's theme service (`ctx.theme`, `@deepseek-ai/dsh-client-ui-theme`) and repaints in place on `theme/change`, so switching Appearance in DSH settings, or the OS scheme while DSH follows the system, re-themes the waveforms, overview and panels without a reload. A registered DSH theme uses the light or dark palette its `colorScheme` builds on. There is no separate viewer switch.
 - **Live update:** a new revision re-renders in place, keeping zoom and selection; it reopens the viewer unless the user closed it for that session. A selection that no longer resolves is cleared with a toast. Changed events flash amber for 1.5 s.
 
 ### References in chat
@@ -69,6 +69,7 @@ The viewer is a right-sidebar page type, `pulseos-sequence`.
 - **Sent user messages:** tokens render as chips through a user-text rule.
   - A chip shows a channel dot, a short label and the revision badge.
   - States: current; changed (amber `r1→r2`); gone (struck through); unresolved (red).
+  - Chip and assistant-reference colors switch with DSH's palette selector, `body[data-ds-dark-theme]`.
   - Hovering highlights the element in the viewer. Clicking opens the viewer and selects the element, switching to the chip's revision when the element is gone now.
 - **Assistant text:** DSH has no inline-token seam for assistant markdown, and rewriting React-owned DOM would break re-renders. Tokens are therefore styled with the CSS Custom Highlight API (red wavy for unknown IDs), and clicks and hovers are resolved by hit-testing the caret position.
 
@@ -101,4 +102,4 @@ Not yet built:
 - **Property source tags** (param, derived, code) in the inspector.
 - **Resizable inspector and per-track scale toggle** — fixed height and a shared gradient scale only.
 - **Envelope decimation** — events narrower than 2 px are drawn as peak bars, not min/max envelopes; large sequences have not been profiled for 60 fps.
-- **Theme** — the viewer has its own dark/light switch and does not follow the DSH theme.
+- **Theme tokens** — the viewer follows DSH's light/dark scheme but keeps its own palette per scheme; DSH token overrides (`--dsw-*`) from a custom theme do not recolor the waveforms.
