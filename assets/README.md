@@ -10,6 +10,8 @@ The mark is a truncated **sinc RF excitation pulse** on the sequence timeline. I
 | `logo/pulseos-mark-{light,dark}.svg/.png` | Symbol only, transparent, 1024 px PNG |
 | `logo/pulseos-icon-{light,dark}.svg/.png` | Rounded tile for app icons and avatars (light tile / dark tile), 1024 px PNG |
 | `banner/pulseos-banner-{light,dark}.svg/.png` | 1280×640 banner (GitHub social preview size). PNG is rendered at 2× |
+| `logo/pulseos-logo-saira-{light,dark}.svg/.png` | **Alternate** lockup: lowercase `pulseos` in wide Saira Medium (DeepSeek-style type) |
+| `banner/pulseos-banner-saira-{light,dark}.svg/.png` | **Alternate** banner, set in Saira |
 | `src/generate.py` | Generates all of the above |
 
 ## Colours
@@ -35,3 +37,5 @@ python3 assets/src/generate.py --png   # SVGs + PNGs (needs Chrome/Chromium on P
 ```
 
 Needs Python 3 with `fontTools`, and Inter installed under `/usr/share/fonts/opentype/inter` (edit `FONT_DIR` otherwise). Inter is under the SIL Open Font License 1.1, which allows use in logos.
+
+The alternate set uses [Saira](https://github.com/Omnibus-Type/Saira) (SIL OFL 1.1, no reserved font name). On first run the script downloads the variable font from the Google Fonts repository into `~/.cache/pulseos-brand/`, then instances it (wordmark: weight 520, width 118).

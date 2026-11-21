@@ -19,6 +19,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import urllib.request
 from pathlib import Path
 
 from fontTools.pens.svgPathPen import SVGPathPen
@@ -27,6 +28,22 @@ from fontTools.ttLib import TTFont
 
 ROOT = Path(__file__).resolve().parents[1]  # assets/
 FONT_DIR = Path("/usr/share/fonts/opentype/inter")
+
+# Alternate wordmark: Saira (SIL OFL 1.1, https://github.com/Omnibus-Type/Saira),
+# a squarish grotesk close in spirit to the DeepSeek wordmark. The variable font
+# is downloaded once and instanced locally.
+SAIRA_URL = "https://github.com/google/fonts/raw/main/ofl/saira/Saira%5Bwdth,wght%5D.ttf"
+CACHE = Path.home() / ".cache" / "pulseos-brand"
+
+
+def saira(wght: float, wdth: float) -> TTFont:
+    from fontTools.varLib import instancer
+
+    vf = CACHE / "Saira-VF.ttf"
+    if not vf.exists():
+        CACHE.mkdir(parents=True, exist_ok=True)
+        urllib.request.urlretrieve(SAIRA_URL, vf)
+    return instancer.instantiateVariableFont(TTFont(vf), {"wght": wght, "wdth": wdth})
 
 # --------------------------------------------------------------------------- palette
 PALETTE = {
@@ -115,12 +132,13 @@ def symbol_group(ink: str, accent: str, stroke: float = STROKE) -> str:
 
 
 class Type:
-    def __init__(self, name: str):
-        self.font = TTFont(FONT_DIR / name)
+    def __init__(self, name: "str | TTFont"):
+        self.font = name if isinstance(name, TTFont) else TTFont(FONT_DIR / name)
         self.gs = self.font.getGlyphSet()
         self.cmap = self.font.getBestCmap()
         self.upm = self.font["head"].unitsPerEm
         self.cap = self.font["OS/2"].sCapHeight
+        self.xh = self.font["OS/2"].sxHeight
         self.kern = self._pair_kerning()
 
     def _pair_kerning(self) -> dict[tuple[str, str], int]:
@@ -185,19 +203,42 @@ def svg(w: float, h: float, body: str, title: str) -> str:
     )
 
 
-def wordmark(bold: Type, light: Type, ink: str, cap: float, x: float, base: float) -> tuple[str, float]:
-    size = cap / bold.cap * bold.upm
-    d1, w1 = bold.path("Pulse", size, x, base, tracking=-0.012)
-    gap = size * 0.035
-    d2, w2 = light.path("OS", size, x + w1 + gap, base, tracking=-0.006)
-    return (f'<path d="{d1}" fill="{ink}"/><path d="{d2}" fill="{ink}"/>', w1 + gap + w2)
+class InterWordmark:
+    """"Pulse" Inter Display SemiBold + "OS" Inter Display Light."""
+
+    def __init__(self):
+        self.bold = Type("InterDisplay-SemiBold.otf")
+        self.light = Type("InterDisplay-Light.otf")
+        self.text = Type("Inter-Regular.otf")
+        self.text_med = Type("Inter-Medium.otf")
+
+    def __call__(self, ink: str, scale: float) -> tuple[str, float]:
+        cap = 92.0 * scale
+        size = cap / self.bold.cap * self.bold.upm
+        d1, w1 = self.bold.path("Pulse", size, 0, 0, tracking=-0.012)
+        gap = size * 0.035
+        d2, w2 = self.light.path("OS", size, w1 + gap, 0, tracking=-0.006)
+        return (f'<path d="{d1}" fill="{ink}"/><path d="{d2}" fill="{ink}"/>', w1 + gap + w2)
+
+
+class SairaWordmark:
+    """Lowercase "pulseos" in wide Saira Medium, one weight, one colour."""
+
+    def __init__(self):
+        self.word = Type(saira(520, 118))
+        self.text = Type(saira(400, 104))
+        self.text_med = Type(saira(500, 104))
+
+    def __call__(self, ink: str, scale: float) -> tuple[str, float]:
+        xh = 62.0 * scale  # x-height on the 256 grid
+        size = xh / self.word.xh * self.word.upm
+        d, w = self.word.path("pulseos", size, 0, 0, tracking=-0.012)
+        return f'<path d="{d}" fill="{ink}"/>', w
 
 
 def build(png: bool) -> list[Path]:
-    semibold = Type("InterDisplay-SemiBold.otf")
-    regular = Type("InterDisplay-Light.otf")
-    text = Type("Inter-Regular.otf")
-    text_med = Type("Inter-Medium.otf")
+    # suffix -> wordmark style; "" is the primary (Inter) set
+    styles = {"": InterWordmark(), "-saira": SairaWordmark()}
     written: list[Path] = []
 
     def save(rel: str, content: str) -> None:
@@ -221,26 +262,28 @@ def build(png: bool) -> list[Path]:
                 f'{symbol_group(tile_ink, tile_acc, STROKE * 1.12)}</g>')
         save(f"logo/pulseos-icon-{mode}.svg", svg(256, 256, icon, "PulseOS"))
 
-        # horizontal lockup: wordmark baseline sits on the pulse timeline
-        cap = 92.0
-        wm, ww = wordmark(semibold, regular, c["ink"], cap, 0, 0)
-        gap = 40.0
-        base_shift = BASE_Y + STROKE / 2  # text baseline on the bottom edge of the timeline
-        w = X1 + STROKE / 2 + gap + ww + 8
-        body = (f'<g transform="translate({-X0 + STROKE / 2 + 4:.2f} 0)">'
-                f'{symbol_group(c["ink"], c["accent"])}'
-                f'<g transform="translate({X1 + STROKE / 2 + gap:.2f} {base_shift:.2f})">{wm}</g></g>')
-        save(f"logo/pulseos-logo-{mode}.svg", svg(round(w - X0 + STROKE / 2 + 4), 256, body, "PulseOS"))
+        for suffix, wordmark in styles.items():
+            # horizontal lockup: wordmark baseline sits on the pulse timeline
+            wm, ww = wordmark(c["ink"], 1.0)
+            gap = 40.0
+            base_shift = BASE_Y + STROKE / 2  # text baseline on the bottom edge of the timeline
+            w = X1 + STROKE / 2 + gap + ww + 8
+            body = (f'<g transform="translate({-X0 + STROKE / 2 + 4:.2f} 0)">'
+                    f'{symbol_group(c["ink"], c["accent"])}'
+                    f'<g transform="translate({X1 + STROKE / 2 + gap:.2f} {base_shift:.2f})">{wm}</g></g>')
+            save(f"logo/pulseos-logo{suffix}-{mode}.svg",
+                 svg(round(w - X0 + STROKE / 2 + 4), 256, body, "PulseOS"))
 
-        # banner 1280x640 (GitHub social preview size)
-        save(f"banner/pulseos-banner-{mode}.svg", banner(c, mode, semibold, regular, text, text_med))
+            # banner 1280x640 (GitHub social preview size)
+            save(f"banner/pulseos-banner{suffix}-{mode}.svg", banner(c, mode, wordmark))
 
     if png:
         render(written)
     return written
 
 
-def banner(c: dict, mode: str, semibold: Type, regular: Type, text: Type, text_med: Type) -> str:
+def banner(c: dict, mode: str, wordmark) -> str:
+    text, text_med = wordmark.text, wordmark.text_med
     W, H = 1280, 640
     parts = [f'<rect width="{W}" height="{H}" fill="{c["bg"]}"/>']
 
@@ -274,20 +317,18 @@ def banner(c: dict, mode: str, semibold: Type, regular: Type, text: Type, text_m
     )
 
     # lockup
-    s = 1.0
     x, ymid = 96, 262
     k = 0.8
     parts.append(f'<g transform="translate({x - (X0 - STROKE / 2) * k:.2f} {ymid - 128 * k:.2f}) scale({k})">'
                  f'{symbol_group(c["ink"], c["accent"])}</g>')
     base = ymid - 128 * k + (BASE_Y + STROKE / 2) * k
-    wm, ww = wordmark(semibold, regular, c["ink"], 92 * k, 0, 0)
+    wm, ww = wordmark(c["ink"], k)
     parts.append(f'<g transform="translate({x + (X1 - X0 + STROKE) * k + 40 * k:.2f} {base:.2f})">{wm}</g>')
 
     # tagline
     t1, _ = text.path("MR pulse sequence development", 40, x, 402, tracking=-0.01)
     t2, _ = text.path("with an LLM in the loop.", 40, x, 456, tracking=-0.01)
     parts.append(f'<path d="{t1}" fill="{c["muted"]}"/><path d="{t2}" fill="{c["muted"]}"/>')
-    # accent rule
     # footer
     f1, _ = text_med.path("pypulseq  ·  interactive sequence viewer  ·  chat-referenced elements",
                           22, x, 560, tracking=0.0)
