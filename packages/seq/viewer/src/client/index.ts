@@ -8,6 +8,8 @@
  * - an `@` trigger source ("Sequence") that inserts reference chips into the composer, which the
  *   viewer's "Reference in chat" also uses;
  * - highlighting and click/hover handling for `[[...]]` tokens in assistant text.
+ *
+ * The viewer and chips follow DSH's active theme (`ctx.theme`); there is no separate switch.
  */
 import type { Context } from '@deepseek-ai/cordis'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
@@ -17,11 +19,13 @@ import type {} from '@deepseek-ai/dsh-client-ui-sidebar-right/client'
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-api-session-controller/client'
 import type {} from '@deepseek-ai/dsh-client-ui-session/client'
+import type {} from '@deepseek-ai/dsh-client-ui-theme/client'
 import { createElement } from 'react'
 import { findReferences, formatReference } from '@pulseos/seq-protocol'
 import { Chip, chipLabel } from './Chip.tsx'
 import { startHighlights } from './highlights.ts'
 import { ViewerStore } from './store.ts'
+import { followHostTheme } from './theme.ts'
 import { Viewer, type ViewerActions } from './Viewer.tsx'
 import './global.css'
 
@@ -32,7 +36,7 @@ declare module '@deepseek-ai/dsh-client-ui-conversation/client' {
   }
 }
 
-export const inject = ['slots', 'sidebarRight', 'sidebarRightTabs', 'sessions', 'uiConversation', 'conversation', 'inputTriggers']
+export const inject = ['slots', 'sidebarRight', 'sidebarRightTabs', 'sessions', 'uiConversation', 'conversation', 'inputTriggers', 'theme']
 
 const ID = '@pulseos/seq-viewer'
 const KIND = 'pulseos-sequence'
@@ -79,6 +83,7 @@ interface SessionInputLike {
  */
 export function apply(ctx: Context): void {
   const stores = new Map<string, ViewerStore>()
+  const scheme = followHostTheme(ctx)
   const watched = new Map<string, () => void>()
   const autoOpened = new Set<string>()
   ctx.effect(() => () => {
@@ -193,7 +198,7 @@ export function apply(ctx: Context): void {
   }), 'pulseos-viewer: tab type')
   ctx.effect(() => ctx.slots.inject('sidebar.right.pane.tab', () => ctx.slots.register(
     { name: 'sidebar.right.pane.tab', key: ID, inject: (sessionId: string) => ({ store: storeFor(sessionId), actions: actionsFor(sessionId) }) },
-    (props: { sessionId: string; store: ViewerStore; actions: ViewerActions }) => createElement(Viewer, { sessionId: props.sessionId, store: props.store, actions: props.actions }),
+    (props: { sessionId: string; store: ViewerStore; actions: ViewerActions }) => createElement(Viewer, { sessionId: props.sessionId, store: props.store, actions: props.actions, scheme }),
   )), 'pulseos-viewer: tab body')
 
   // Chips in sent user messages.

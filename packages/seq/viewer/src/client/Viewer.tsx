@@ -6,6 +6,7 @@ import {
 import { CHANNELS, clampView, formatDuration, formatTime, type Viewport } from './geometry.ts'
 import { DARK, drawOverview, drawTracks, hitTest, layoutRows, LIGHT, type DrawInput, type Palette, type Row } from './draw.ts'
 import type { ViewerSnapshot, ViewerStore } from './store.ts'
+import type { SchemeSource } from './theme.ts'
 import styles from './viewer.module.css'
 
 /** Actions the viewer needs from the host page. */
@@ -20,12 +21,13 @@ export interface ViewerProps {
   sessionId: string
   store: ViewerStore
   actions: ViewerActions
+  /** DSH's active color scheme; the viewer re-themes when it changes. */
+  scheme: SchemeSource
 }
 
 const TRACK_LABELS: Record<string, [string, string]> = {
   rf: ['RF', '|B1| µT'], rfPhase: ['∠ RF', 'phase'], gz: ['Gz', 'slice'], gy: ['Gy', 'phase'], gx: ['Gx', 'read'], adc: ['ADC', 'samples'],
 }
-const THEME_KEY = 'pulseos.viewer.theme'
 
 function useSnapshot(store: ViewerStore): ViewerSnapshot {
   return useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot)
@@ -69,11 +71,10 @@ function humanRole(id: string): string {
   return event === undefined ? `${words(role!)} block` : `${words(role!)} · ${event}`
 }
 
-export function Viewer({ sessionId, store, actions }: ViewerProps) {
+export function Viewer({ sessionId, store, actions, scheme }: ViewerProps) {
   const snap = useSnapshot(store)
-  const [theme, setTheme] = useState<'dark' | 'light'>(() => (localStorage.getItem(THEME_KEY) === 'light' ? 'light' : 'dark'))
+  const theme = useSyncExternalStore(scheme.subscribe, scheme.getSnapshot, scheme.getSnapshot)
   const palette = theme === 'dark' ? DARK : LIGHT
-  useEffect(() => { localStorage.setItem(THEME_KEY, theme) }, [theme])
   useEffect(() => {
     if (snap.toast === null) return
     const timer = setTimeout(() => { store.dismissToast() }, 4500)
@@ -87,7 +88,7 @@ export function Viewer({ sessionId, store, actions }: ViewerProps) {
 
   return (
     <div className={styles.root} data-pulseos-viewer={sessionId} data-theme={theme} tabIndex={-1}>
-      <Toolbar snap={snap} store={store} shown={shown} latest={latest} theme={theme} onTheme={() => { setTheme(t => (t === 'dark' ? 'light' : 'dark')) }} />
+      <Toolbar snap={snap} store={store} shown={shown} latest={latest} />
       {snap.status === 'unavailable' && (
         <div className={styles.bannerBad} role="alert">
           Sequence backend unavailable — {snap.error}
@@ -109,7 +110,7 @@ export function Viewer({ sessionId, store, actions }: ViewerProps) {
   )
 }
 
-function Toolbar({ snap, store, shown, latest, theme, onTheme }: { snap: ViewerSnapshot; store: ViewerStore; shown: RevisionRecord | null; latest: RevisionRecord | null; theme: string; onTheme: () => void }) {
+function Toolbar({ snap, store, shown, latest }: { snap: ViewerSnapshot; store: ViewerStore; shown: RevisionRecord | null; latest: RevisionRecord | null }) {
   const index = snap.index
   const errors = snap.model?.timing.errors ?? []
   const [errorCursor, setErrorCursor] = useState(0)
@@ -175,7 +176,6 @@ function Toolbar({ snap, store, shown, latest, theme, onTheme }: { snap: ViewerS
       >
         <span className={styles.dot} style={{ background: errors.length > 0 ? 'var(--bad)' : 'var(--ok)' }} /> timing {errors.length}
       </button>
-      <button type="button" className={styles.plain} aria-label="Toggle light or dark theme" onClick={onTheme}>{theme === 'dark' ? '☀' : '☾'}</button>
       {shown !== null && <a className={styles.chipBox} href={store.seqUrl(shown.rev)} download>⤓ .seq</a>}
     </div>
   )
