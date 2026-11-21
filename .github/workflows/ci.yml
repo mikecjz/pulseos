@@ -28,6 +28,10 @@ jobs:
         working-directory: dsh
         run: pnpm run build:artifacts
       - uses: astral-sh/setup-uv@v6
+        with:
+          # Explicit path: the default '**' globs walk dsh/**/node_modules, whose pnpm
+          # workspace symlinks form cycles (ELOOP).
+          cache-dependency-glob: python/uv.lock
       - name: Python environment
         run: uv sync --project python --locked
       - name: Install PulseOS
@@ -44,5 +48,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
+        with:
+          # Explicit path: the default '**' globs walk dsh/**/node_modules, whose pnpm
+          # workspace symlinks form cycles (ELOOP).
+          cache-dependency-glob: python/uv.lock
       - run: uv sync --project python --locked
       - run: uv run --project python pytest python/tests
