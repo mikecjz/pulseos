@@ -39,7 +39,10 @@ describe.skipIf(executablePath === undefined)('sequence viewer in dsh web', () =
     ])
     scratch = mkdtempSync(join(tmpdir(), 'pulseos-web-'))
     const overlay = join(scratch, 'test.patch.yml')
-    writeFileSync(overlay, `- id: pulseos-seq-service\n  config:\n    dataDir: ${JSON.stringify(join(scratch, 'data'))}\n    confine: ${landlockAbi >= 4}\n`)
+    // documentsDirectory: the default Workspace otherwise depends on the host's Documents lookup,
+    // which fails on CI runners and leaves the start page without a composer.
+    writeFileSync(overlay, `- id: pulseos-seq-service\n  config:\n    dataDir: ${JSON.stringify(join(scratch, 'data'))}\n    confine: ${landlockAbi >= 4}\n`
+      + `- id: workspace-controller\n  config:\n    documentsDirectory: ${JSON.stringify(join(scratch, 'Documents'))}\n`)
     child = spawn(process.execPath, [join(repo, 'scripts/dsh.mjs'), 'web', '--patch', overlay, '--no-open', '--host', '127.0.0.1', '--port', '0'], {
       env: { ...process.env, DSH_HOME: join(scratch, 'home'), DEEPSEEK_BASE_URL: llm.url, DEEPSEEK_API_KEY: 'mock-key' },
       stdio: ['ignore', 'pipe', 'pipe'],

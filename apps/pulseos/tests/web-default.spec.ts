@@ -4,7 +4,7 @@
  * while other sessions still open it by default.
  */
 import { spawn, type ChildProcess } from 'node:child_process'
-import { mkdtempSync, rmSync } from 'node:fs'
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -35,7 +35,11 @@ describe.skipIf(executablePath === undefined)('sequence viewer opens by default'
     // Text-only replies: nothing is ever built, so only the default open can show the viewer.
     llm = await startScriptedLlm([{ text: 'Hello.' }, { text: 'Still here.' }, { text: 'Again.' }])
     scratch = mkdtempSync(join(tmpdir(), 'pulseos-web-default-'))
-    child = spawn(process.execPath, [join(repo, 'scripts/dsh.mjs'), 'web', '--no-open', '--host', '127.0.0.1', '--port', '0'], {
+    // documentsDirectory: the default Workspace otherwise depends on the host's Documents lookup,
+    // which fails on CI runners and leaves the start page without a composer.
+    const overlay = join(scratch, 'test.patch.yml')
+    writeFileSync(overlay, `- id: workspace-controller\n  config:\n    documentsDirectory: ${JSON.stringify(join(scratch, 'Documents'))}\n`)
+    child = spawn(process.execPath, [join(repo, 'scripts/dsh.mjs'), 'web', '--patch', overlay, '--no-open', '--host', '127.0.0.1', '--port', '0'], {
       env: { ...process.env, DSH_HOME: join(scratch, 'home'), DEEPSEEK_BASE_URL: llm.url, DEEPSEEK_API_KEY: 'mock-key' },
       stdio: ['ignore', 'pipe', 'pipe'],
     })
