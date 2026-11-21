@@ -22,6 +22,7 @@ packages/<group>/    PulseOS DSH plugins (pnpm workspace)
   seq/tools            seq_* model tools (status, build, set params, edit recipe, diff, ...)
   seq/refs             [[element id]] references in user messages -> logged model context
   seq/viewer           Web client: right-sidebar waveform viewer, inspector, reference chips
+  app/brand            Web client: PulseOS mark, wordmark and hero banner in DSH's brand slots
 apps/pulseos/        cordis.patch.yml: the PulseOS overlay on a DSH profile
 profiles/scanner/    scanner profile JSON files, shared by TypeScript and Python
 python/              pulseos_seq: recipes, SeqBuilder, element IDs, model JSON, build runner
@@ -42,7 +43,7 @@ cd pulseos
 pnpm run bootstrap
 ```
 
-`bootstrap` checks out the DSH submodule, installs and builds it (`build:artifacts`, a few minutes), installs this workspace, builds the viewer bundle and creates the Python environment. Run it again after moving the DSH pin; after editing `packages/seq/viewer/src/client`, run `pnpm run build`.
+`bootstrap` checks out the DSH submodule, installs and builds it (`build:artifacts`, a few minutes), installs this workspace, builds the viewer bundle and creates the Python environment. Run it again after moving the DSH pin; after editing `packages/seq/viewer/src/client` or `packages/app/brand/src/client`, run `pnpm run build`.
 
 ## Run
 

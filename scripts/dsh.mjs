@@ -16,10 +16,12 @@ if (profile === undefined) {
   console.error('usage: node scripts/dsh.mjs <profile> [dsh options] [app args]')
   process.exit(2)
 }
-// The overlay's Web client plugin loads its built bundle; DSH fails the boot without it.
-if (!existsSync(`${repoRoot}packages/seq/viewer/lib/client.js`)) {
-  console.error('The sequence viewer bundle is missing: run `pnpm run build` first.')
-  process.exit(1)
+// The overlay's Web client plugins load their built bundles; DSH fails the boot without them.
+for (const [pkg, label] of [['seq/viewer', 'sequence viewer'], ['app/brand', 'brand']]) {
+  if (!existsSync(`${repoRoot}packages/${pkg}/lib/client.js`)) {
+    console.error(`The ${label} client bundle is missing: run \`pnpm run build\` first.`)
+    process.exit(1)
+  }
 }
 const child = spawn(process.execPath, ['--import', 'tsx/esm', 'apps/cli/src/bin.ts', profile, '--patch', appPatch, ...rest], {
   cwd: dshRoot,

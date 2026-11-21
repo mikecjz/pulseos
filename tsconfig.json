@@ -8,7 +8,7 @@
     "packages/*/*/tests",
     "apps/*/tests"
   ],
-  "exclude": ["packages/seq/viewer/src/client", "packages/seq/viewer/tests"],
+  "exclude": ["packages/seq/viewer/src/client", "packages/seq/viewer/tests", "packages/app/brand/src/client"],
   "references": [
     { "path": "./dsh/vendor/cosmokit" },
     { "path": "./dsh/vendor/schemastery" },

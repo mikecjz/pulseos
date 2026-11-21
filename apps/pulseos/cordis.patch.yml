@@ -14,3 +14,5 @@
       name: '../../packages/seq/refs/src/index.ts'
     - id: pulseos-seq-viewer
       name: '../../packages/seq/viewer/src/index.ts'
+    - id: pulseos-brand
+      name: '../../packages/app/brand/src/index.ts'

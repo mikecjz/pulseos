@@ -1,0 +1,13 @@
+/* Hero banner: primary theme ink, like the headline it heads. */
+[data-pulseos-banner] {
+  display: block;
+  color: var(--dsw-alias-label-primary);
+}
+
+/* The banner is the hero's title, so DSH's default headline ("Into the Unknown" + Preview badge)
+   beside it is hidden. Only the default one: it is the title group with two children (text and
+   badge); a custom headline (one child, e.g. a review title) stays visible. The hero renders the
+   brand-mark slot in a span followed by the title group span. */
+span:has([data-pulseos-banner]) + span:has(> span + span) {
+  display: none;
+}

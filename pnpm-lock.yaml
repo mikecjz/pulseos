@@ -36,6 +36,8 @@ importers:
         specifier: link:./dsh/node_modules/zod
         version: link:dsh/node_modules/zod
 
+  packages/app/brand: {}
+
   packages/seq/protocol: {}
 
   packages/seq/refs:
