@@ -173,6 +173,8 @@ export function drawTracks(g: CanvasRenderingContext2D, input: DrawInput): void 
     } else if (r.key === 'rf') {
       const base = r.y + r.h - 6
       const yOf = (v: number) => base - (v / rfScale) * (r.h - 16)
+      g.strokeStyle = p.line2
+      g.beginPath(); g.moveTo(0, base + 0.5); g.lineTo(width, base + 0.5); g.stroke()
       for (const e of index.eventsIn('rf', view.t0, view.t1)) {
         drawShape(g, e, model, x, yOf, base, color, input, selected(e.id), dimmed(e.id), p)
         if (e.kind === 'rf' && e.duration * pxPerS > 30) {
@@ -283,6 +285,14 @@ function drawShape(
     g.closePath()
     g.fillStyle = fill
     g.fill()
+    // Outline the waveform only, never the edge along the baseline: the track's grey reference line is the only line at y = 0.
+    g.beginPath()
+    for (let i = 0; i < points.t.length; i++) {
+      const px = x(points.t[i]!)
+      const py = yOf(points.v[i]!)
+      if (i === 0 || (points.v[i - 1] === 0 && points.v[i] === 0)) g.moveTo(px, py)
+      else g.lineTo(px, py)
+    }
     g.strokeStyle = stroke
     g.lineWidth = sel ? 2 : 1.2
     g.stroke()
