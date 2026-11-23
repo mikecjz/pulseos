@@ -90,7 +90,7 @@ export interface Config {
   graceMs: number
   /** Largest accepted runner output (model JSON). */
   maxOutputBytes: number
-  /** Confine each build with Landlock; when unavailable the build fails instead of running unconfined. */
+  /** Confine each build (Landlock on Linux, Seatbelt on macOS); when unavailable the build fails instead of running unconfined. */
   confine: boolean
   /** Bundled recipe used by the first build of a session. */
   defaultRecipe: string
@@ -111,7 +111,7 @@ export class PulseSeqService extends Service {
     timeoutMs: z.natural().min(1).max(2_147_483_647).default(120_000).description('Wall-clock limit of one build.'),
     graceMs: z.natural().min(1).max(60_000).default(2_000).description('Grace period before a stopped build is killed.'),
     maxOutputBytes: z.natural().min(1024).default(256 << 20).description('Largest accepted model JSON.'),
-    confine: z.boolean().default(true).description('Confine builds with Landlock and fail closed when unavailable.'),
+    confine: z.boolean().default(true).description('Confine builds (Landlock on Linux, Seatbelt on macOS) and fail closed when unavailable.'),
     defaultRecipe: z.string().default('gre2d').description('Bundled recipe for the first build of a session.'),
     modelCacheSize: z.natural().min(1).default(16).description('Parsed models kept in memory.'),
   })

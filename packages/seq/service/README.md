@@ -31,13 +31,13 @@ Each build follows these steps:
 2. Run `python -I -B -m pulseos_seq.run` there through `ctx.subprocess`, with a scrubbed environment, a wall-clock deadline (`timeoutMs`) and a bounded output (`maxOutputBytes`).
 3. Remove the directory.
 
-With `confine: true` (the default), the runner reads its inputs and then confines itself with Landlock before any recipe code runs. After that it can:
+With `confine: true` (the default), the runner reads its inputs and then confines itself before any recipe code runs — with Landlock on Linux and with Seatbelt (`sandbox_init`, the kernel sandbox behind App Sandbox) on macOS. After that it can:
 
-- read only the Python installation,
+- read only the Python installation (on macOS also the system library directories the dynamic loader needs),
 - write only its build directory,
-- not open TCP connections or listening sockets.
+- not open TCP connections or listening sockets (on macOS no network access at all, and no spawning of other programs).
 
-If the kernel's Landlock ABI is older than 4, the build fails with kind `sandbox` rather than running unconfined. The recipe check (an import allowlist and forbidden names) runs as well, as defence in depth.
+If no backend is available — Linux with a Landlock ABI older than 4, or another platform — the build fails with kind `sandbox` rather than running unconfined. The recipe check (an import allowlist and forbidden names) runs as well, as defence in depth.
 
 ## Config
 
@@ -49,7 +49,7 @@ If the kernel's Landlock ABI is older than 4, the build fails with kind `sandbox
 | `timeoutMs` | `120000` | Build deadline. |
 | `graceMs` | `2000` | Terminate-to-kill grace period. |
 | `maxOutputBytes` | 256 MiB | Largest accepted model JSON. |
-| `confine` | `true` | Landlock confinement; fails closed. |
+| `confine` | `true` | Landlock (Linux) or Seatbelt (macOS) confinement; fails closed. |
 | `defaultRecipe` | `gre2d` | Recipe of the first build. |
 | `modelCacheSize` | `16` | Parsed models kept in memory. |
 
@@ -73,6 +73,7 @@ None directly.
 
 ## Known Limitations and Deferred Work
 
-- **Linux-only confinement** — on other platforms set `confine: false`, which runs builds unconfined; only the recipe check remains.
-- **UDP is not confined** — Landlock ABI 4 rules cover TCP only. The recipe check is what blocks socket imports.
+- **Linux and macOS only** — on other platforms set `confine: false`, which runs builds unconfined; only the recipe check remains.
+- **UDP is not confined on Linux** — Landlock ABI 4 rules cover TCP only. The recipe check is what blocks socket imports.
+- **`sandbox_init` is deprecated API on macOS** — it still works and is what Chromium and other sandboxed tools use, but Apple could remove it; the build would then fail closed with kind `sandbox`.
 - **The store is never pruned** — models and `.seq` files accumulate in `dataDir`.
