@@ -1,4 +1,4 @@
-"""Landlock self-confinement: reads, writes and TCP are restricted after confine()."""
+"""Self-confinement (Landlock on Linux, Seatbelt on macOS): reads, writes and TCP are restricted after confine()."""
 
 import json
 import subprocess
@@ -7,9 +7,11 @@ import textwrap
 
 import pytest
 
-from pulseos_seq.confine import MINIMUM_ABI, abi_version
+from pulseos_seq.confine import MINIMUM_ABI, available
 
-pytestmark = pytest.mark.skipif(abi_version() < MINIMUM_ABI, reason="needs Linux Landlock ABI >= 4")
+# macOS always has Seatbelt, so a broken backend there fails these tests instead of skipping them.
+pytestmark = pytest.mark.skipif(sys.platform != "darwin" and not available(),
+                                reason="needs Linux Landlock ABI >= 4 or macOS Seatbelt")
 
 PROBE = textwrap.dedent("""
     import json, os, socket, sys
@@ -25,7 +27,7 @@ PROBE = textwrap.dedent("""
     attempt("write_inside", lambda: open(os.path.join(writable, "ok.txt"), "w").write("x"))
     attempt("write_outside", lambda: open(os.path.join(outside, "no.txt"), "w").write("x"))
     attempt("read_outside", lambda: open(os.path.join(outside, "secret.txt")).read())
-    attempt("read_etc", lambda: open("/etc/hostname").read())
+    attempt("read_etc", lambda: open("/etc/hosts").read())
     def connect():
         s = socket.socket(); s.settimeout(2); s.connect(("127.0.0.1", 9))
     attempt("tcp_connect", connect)
@@ -53,5 +55,30 @@ def test_confined_build_through_the_runner(tmp_path):
                           capture_output=True, text=True, check=True)
     result = json.loads(done.stdout)
     assert result["ok"], result.get("error")
-    assert result["model"]["confinement"]["landlockAbi"] >= MINIMUM_ABI
+    confinement = result["model"]["confinement"]
+    if sys.platform == "darwin":
+        assert confinement == {"mechanism": "seatbelt"}
+    else:
+        assert confinement["mechanism"] == "landlock" and confinement["landlockAbi"] >= MINIMUM_ABI
     assert (tmp_path / "out.seq").is_file()
+
+
+@pytest.mark.skipif(sys.platform != "darwin", reason="macOS only")
+def test_seatbelt_blocks_spawning_and_udp(tmp_path):
+    probe = textwrap.dedent("""
+        import json, socket, subprocess, sys
+        from pulseos_seq.confine import confine
+        confine(sys.argv[1])
+        results = {}
+        try:
+            subprocess.run(["/bin/echo", "x"], check=True, capture_output=True); results["spawn"] = "allowed"
+        except OSError:
+            results["spawn"] = "denied"
+        try:
+            socket.socket(socket.AF_INET, socket.SOCK_DGRAM).sendto(b"x", ("127.0.0.1", 9)); results["udp"] = "allowed"
+        except OSError:
+            results["udp"] = "denied"
+        print(json.dumps(results))
+    """)
+    done = subprocess.run([sys.executable, "-c", probe, str(tmp_path)], capture_output=True, text=True, check=True)
+    assert json.loads(done.stdout) == {"spawn": "denied", "udp": "denied"}

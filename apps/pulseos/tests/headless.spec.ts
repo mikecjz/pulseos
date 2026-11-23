@@ -13,9 +13,12 @@ import { startScriptedLlm, toolResults, type ScriptedLlm, type ScriptStep } from
 
 const repo = fileURLToPath(new URL('../../../', import.meta.url))
 
-/** Landlock ABI of this host; builds are confined only where the kernel supports it (CI kernels may not). */
+/** Landlock ABI of this host (0 off Linux). */
 const landlockAbi = Number(spawnSync(join(repo, 'python/.venv/bin/python'), ['-c', 'from pulseos_seq.confine import abi_version; print(abi_version())'], { encoding: 'utf8' }).stdout.trim() || 0)
-const confine = landlockAbi >= 4
+/** Whether this host can confine builds (Landlock ABI >= 4 on Linux, Seatbelt on macOS; CI kernels may lack Landlock). */
+const confine = spawnSync(join(repo, 'python/.venv/bin/python'), ['-c', 'from pulseos_seq.confine import available; print(int(available()))'], { encoding: 'utf8' }).stdout.trim() === '1'
+/** The confinement record each stored model should carry. */
+const expectedConfinement = !confine ? null : process.platform === 'darwin' ? { mechanism: 'seatbelt' } : { mechanism: 'landlock', landlockAbi }
 
 const SCRIPT: ScriptStep[] = [
   { tool: 'seq_status', input: {} },
@@ -93,8 +96,8 @@ describe('dsh headless with the PulseOS overlay', () => {
   it('stores the built models by content address', async () => {
     const models = await readdir(join(scratch, 'data/models'))
     expect(models.length).toBe(3)
-    const model = JSON.parse(await readFile(join(scratch, 'data/models', models[0]!), 'utf8')) as { confinement: { landlockAbi: number } | null }
-    expect(model.confinement === null ? 0 : model.confinement.landlockAbi).toBe(confine ? landlockAbi : 0)
+    const model = JSON.parse(await readFile(join(scratch, 'data/models', models[0]!), 'utf8')) as { confinement: unknown }
+    expect(model.confinement).toEqual(expectedConfinement)
     expect((await readdir(join(scratch, 'data/seq'))).length).toBe(3)
   })
 })

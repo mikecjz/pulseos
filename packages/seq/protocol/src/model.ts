@@ -130,5 +130,6 @@ export interface SequenceModel {
   shapes: Record<string, Shape>
   timing: { ok: boolean; errors: TimingError[] }
   warnings?: string[]
-  confinement?: { landlockAbi: number } | null
+  /** How the build was sandboxed; null when it ran unconfined. Models built before macOS support lack `mechanism`. */
+  confinement?: { mechanism?: 'landlock' | 'seatbelt'; landlockAbi?: number } | null
 }
