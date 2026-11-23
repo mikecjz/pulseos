@@ -80,6 +80,9 @@ export interface ReferenceToken {
   valid: boolean
 }
 
+/** Sequence name reserved for simulation references; never an element ID prefix. */
+export const SIM_PREFIX = 'sim'
+
 const TOKEN_RE = /\[\[([A-Za-z][A-Za-z0-9_]*:[^\]|\s]+)(?:\|r(\d+))?\]\]/g
 
 /**
@@ -91,6 +94,8 @@ export function findReferences(text: string): ReferenceToken[] {
   const tokens: ReferenceToken[] = []
   for (const match of text.matchAll(TOKEN_RE)) {
     const id = match[1]!
+    // `sim:` is reserved for simulation references (`[[sim:r3/tubes]]`, @pulseos/sim-protocol).
+    if (id.startsWith(`${SIM_PREFIX}:`)) continue
     let valid = true
     try {
       parseElementId(id)

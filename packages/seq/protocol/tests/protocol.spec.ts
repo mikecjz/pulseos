@@ -77,4 +77,8 @@ describe('reference tokens', () => {
     ])
     expect(formatReference('gre2d:excitation.rf', 5)).toBe('[[gre2d:excitation.rf|r5]]')
   })
+
+  it('leaves simulation references ([[sim:...]]) to the simulator', () => {
+    expect(findReferences('see [[sim:r3/tubes]] and [[gre2d:excitation.rf]]').map(t => t.id)).toEqual(['gre2d:excitation.rf'])
+  })
 })
