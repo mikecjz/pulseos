@@ -1,0 +1,13 @@
+/* [[sim:...]] chips in sent user messages; light by default, DSH's dark palette selector switches. */
+.chip {
+  --accent: #d0219c; --sim: #2563eb; --bad: #dc2626;
+  display: inline-flex; align-items: center; gap: 5px; height: 22px; max-width: 100%; padding: 0 7px; margin: 0 1px;
+  vertical-align: baseline; border: 1px solid color-mix(in srgb, currentColor 22%, transparent); border-radius: 11px;
+  background: color-mix(in srgb, currentColor 6%, transparent); font: 12px ui-monospace, "JetBrains Mono", Menlo, monospace;
+  cursor: pointer; white-space: nowrap; overflow: hidden;
+}
+:global(body[data-ds-dark-theme]) .chip { --accent: #ff5cc8; --sim: #5fa8ff; --bad: #ef4444; }
+.chip:hover, .chip:focus-visible { border-color: var(--accent); outline: none; }
+.icon { width: 8px; height: 8px; border-radius: 2px; background: var(--sim); flex: none; }
+.rev { padding: 0 4px; border-radius: 3px; font-size: 10px; opacity: .6; }
+.unresolved { border-color: var(--bad); color: var(--bad); }

@@ -1,6 +1,5 @@
 /** HTTP paths served by the simulation panel's host face. */
-import type { SimFailedRecord, SimRunRecord } from '@pulseos/sim-protocol'
-import type { EngineState, SimJob } from '@pulseos/sim-service'
+import type { EngineState, SimFailedRecord, SimJob, SimRunRecord } from '@pulseos/sim-protocol'
 
 /** `GET ?sessionId=`: runs, jobs, engines and revisions. */
 export const SIM_STATE_PATH = '/api/pulseos.sim.state'

@@ -13,10 +13,11 @@
     "lint": "oxlint packages apps scripts",
     "test": "vitest run",
     "test:python": "uv run --project python pytest python/tests",
+    "test:sim": "uv run --project sims/mrzero-mcp pytest sims/mrzero-mcp/tests",
     "smoke:boot": "node scripts/smoke-boot.mjs",
     "dsh": "node scripts/dsh.mjs",
     "web": "node scripts/dsh.mjs web",
-    "build": "pnpm --filter @pulseos/seq-viewer --filter @pulseos/brand run bundle"
+    "build": "pnpm --filter @pulseos/seq-viewer --filter @pulseos/sim-viewer --filter @pulseos/brand run bundle"
   },
   "devDependencies": {
     "@types/node": "^22.20.1",
