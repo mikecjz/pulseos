@@ -23,6 +23,11 @@ packages/<group>/    PulseOS DSH plugins (pnpm workspace)
   seq/refs             [[element id]] references in user messages -> logged model context
   seq/viewer           Web client: right-sidebar waveform viewer, inspector, reference chips
   app/brand            Web client: PulseOS mark, wordmark and hero banner in DSH's brand slots
+  sim/protocol         pulseos.sim/1 MCP tool contract, simulation records, [[sim:...]] tokens
+  sim/service          ctx.pulseSim: the MCP client of simulation engines; queue, result cache, session runs
+  sim/tools            sim_run / sim_summary model tools, [[sim:...]] reference context
+  sim/viewer           Web client: right-sidebar Simulation page (image, k-space, ADC signal)
+sims/                MCP simulation engines, separate programs (mrzero-mcp: MRzero, AGPL, Docker)
 apps/pulseos/        cordis.patch.yml: the PulseOS overlay on a DSH profile
 profiles/scanner/    scanner profile JSON files, shared by TypeScript and Python
 python/              pulseos_seq: recipes, SeqBuilder, element IDs, model JSON, build runner
@@ -45,6 +50,16 @@ pnpm run bootstrap
 
 `bootstrap` checks out the DSH submodule, installs and builds it (`build:artifacts`, a few minutes), installs this workspace, builds the viewer bundle and creates the Python environment. Run it again after moving the DSH pin; after editing `packages/seq/viewer/src/client` or `packages/app/brand/src/client`, run `pnpm run build`.
 
+## Simulator (optional)
+
+The Simulation page and the `sim_*` tools run the sequence through a simulation engine: an MCP server that `ctx.pulseSim` starts on demand. By default it is MRzero in Docker on GPU 0:
+
+```sh
+docker build -t pulseos/mrzero-mcp:dev sims/mrzero-mcp
+```
+
+Without Docker or a GPU, see [sims/README.md](sims/README.md) for the `local` launcher and CPU settings. Everything else works without an engine; the page then shows it as unavailable.
+
 ## Run
 
 ```sh
@@ -65,6 +80,7 @@ pnpm run test          # vitest: units, headless and browser composition tests (
 pnpm run smoke:boot    # keyless: boots `dsh web` with the overlay
 pnpm run build         # viewer client bundle (needed by `web` and the browser test)
 pnpm run test:python   # pytest, python/
+pnpm run test:sim      # pytest, sims/mrzero-mcp (needs `uv sync --project sims/mrzero-mcp`; torch is large)
 ```
 
 ## How PulseOS uses DSH
