@@ -10,7 +10,7 @@ Error: No simulation has run in this session yet. Call sim_run.
 
 ## sim_run
 Simulation [[sim:r1/tubes]]: r1 (gre2d) on phantom tubes with fake 1, cpu, 64 ms.
-Acquisition: 64 x 64 samples, FOV 200 x 200 mm; 64 repetitions simulated on a 64^2 grid.
+Acquisition: 64 x 64 samples, FOV 200 x 200 mm; 64 repetitions simulated on a 64^2 grid, starting from full magnetisation (only the sequence's own dummy scans approach steady state).
 Sequence at r1: TE 4.2 ms, TR 10 ms, flip_angle 15 deg, Ny 64, Nx 64.
 Signal: peak 326; k-space centre line is ADC 32 (acquisition order), its peak 326.
 Image magnitude: max 0.941, mean 0.1, no noise added.
@@ -25,7 +25,7 @@ Timing check: OK (pypulseq check_timing found no errors).
 
 ## sim_run
 Simulation [[sim:r2/tubes]]: r2 (gre2d) on phantom tubes with fake 1, cpu, 64 ms.
-Acquisition: 64 x 64 samples, FOV 200 x 200 mm; 64 repetitions simulated on a 64^2 grid.
+Acquisition: 64 x 64 samples, FOV 200 x 200 mm; 64 repetitions simulated on a 64^2 grid, starting from full magnetisation (only the sequence's own dummy scans approach steady state).
 Sequence at r2: TE 4.2 ms, TR 10 ms, flip_angle 30 deg, Ny 64, Nx 64.
 Signal: peak 445; k-space centre line is ADC 32 (acquisition order), its peak 445.
 Image magnitude: max 1.29, mean 0.1, no noise added.
@@ -35,7 +35,7 @@ Compared with r1 on the same phantom: a 0.671 -> 0.918 (+37%), b 0.437 -> 0.598 
 
 ## sim_run
 Simulation [[sim:r1/tubes]]: r1 (gre2d) on phantom tubes with fake 1, cpu, from cache.
-Acquisition: 64 x 64 samples, FOV 200 x 200 mm; 64 repetitions simulated on a 64^2 grid.
+Acquisition: 64 x 64 samples, FOV 200 x 200 mm; 64 repetitions simulated on a 64^2 grid, starting from full magnetisation (only the sequence's own dummy scans approach steady state).
 Sequence at r1: TE 4.2 ms, TR 10 ms, flip_angle 15 deg, Ny 64, Nx 64.
 Signal: peak 326; k-space centre line is ADC 32 (acquisition order), its peak 326.
 Image magnitude: max 0.941, mean 0.1, no noise added.
@@ -48,7 +48,7 @@ Error: Simulation failed (input): the fake engine has no phantom "nope"; phantom
 
 ## sim_summary
 Simulation [[sim:r2/tubes]]: r2 (gre2d) on phantom tubes with fake 1, cpu, 64 ms.
-Acquisition: 64 x 64 samples, FOV 200 x 200 mm; 64 repetitions simulated on a 64^2 grid.
+Acquisition: 64 x 64 samples, FOV 200 x 200 mm; 64 repetitions simulated on a 64^2 grid, starting from full magnetisation (only the sequence's own dummy scans approach steady state).
 Sequence at r2: TE 4.2 ms, TR 10 ms, flip_angle 30 deg, Ny 64, Nx 64.
 Signal: peak 445; k-space centre line is ADC 32 (acquisition order), its peak 445.
 Image magnitude: max 1.29, mean 0.1, no noise added.

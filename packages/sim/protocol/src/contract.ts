@@ -6,6 +6,13 @@
 
 export const SIM_PROTOCOL = 'pulseos.sim/1'
 
+/**
+ * Error results: the text of an error result is shown to the user. Text starting with this prefix
+ * reports a failure inside the engine; any other error result means the input (sequence, phantom,
+ * settings) cannot be simulated.
+ */
+export const ENGINE_ERROR_PREFIX = 'engine error:'
+
 /** Tool names of the contract. */
 export const SIM_TOOLS = { info: 'engine_info', phantoms: 'list_phantoms', simulate: 'simulate' } as const
 

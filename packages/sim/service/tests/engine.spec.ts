@@ -7,7 +7,8 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { decodePart } from '@pulseos/sim-protocol'
-import { EngineConnection, EngineToolError, EngineUnavailableError, type Progress } from '../src/engine.ts'
+import type { Progress } from '@pulseos/sim-protocol'
+import { EngineConnection, EngineToolError, EngineUnavailableError } from '../src/engine.ts'
 import { launchSpec, type EngineConfig } from '../src/launch.ts'
 
 const fake: EngineConfig = { launcher: 'fake', image: '', gpu: null, command: [], device: 'cpu', env: {}, memory: '1g', fakeDelayMs: 2 }

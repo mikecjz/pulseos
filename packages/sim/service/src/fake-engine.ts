@@ -79,6 +79,7 @@ function createServer(): McpServer {
     if (layout === undefined) return text('the sequence has no [ADC] section', true)
     const ny = layout.count
     const nx = layout.samples
+    // oxlint-disable-next-line no-underscore-dangle -- `_meta` is the MCP wire name.
     const token = ctx.mcpReq._meta?.progressToken
     const contrast = hashUnit(args.seqHash)
     // Image: vials at fractions of the FOV; brightness falls with T1, scaled by the sequence hash.

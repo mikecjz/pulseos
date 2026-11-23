@@ -33,8 +33,9 @@ describe('launchSpec', () => {
   })
 })
 
+const record = (type: string, data: unknown) => ({ type, data, seq: 1, time: 0, ignorable: true }) as unknown as SessionEvent
+
 describe('simulation state', () => {
-  const record = (type: string, data: unknown) => ({ type, data, seq: 1, time: 0, ignorable: true }) as unknown as SessionEvent
 
   it('folds runs and failures and ignores other events', () => {
     const empty: SimulationState = { runs: [], lastFailure: null }

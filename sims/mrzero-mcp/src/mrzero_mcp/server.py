@@ -139,6 +139,8 @@ def build_server(out: Path, phantom_dir: Path, device: str):
             raise ToolError("the simulation was cancelled") from error
         except SimulationError as error:
             raise ToolError(str(error)) from error
+        except Exception as error:  # noqa: BLE001 - reported as an engine failure (pulseos.sim/1 prefix)
+            raise ToolError(f"engine error: {type(error).__name__}: {error}") from error
         return {"resultKey": resultKey, "parts": parts, "stats": result.stats, "timing": result.timing,
                 "grid": result.grid, "warnings": result.warnings, "device": device, "phantomHash": maps.content_hash()}
 

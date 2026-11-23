@@ -20,14 +20,15 @@ import type { ProjectionHandle } from '@deepseek-ai/dsh-session-projection'
 import type { RevisionRecord } from '@pulseos/seq-protocol'
 import type {} from '@pulseos/seq-service'
 import {
-  isResultKey, SIM_FAILED_RECORD, SIM_PROTOCOL, SIM_RUN_RECORD,
-  type EngineInfo, type PartInfo, type PhantomInfo, type SimAuthor, type SimFailedRecord, type SimFailureKind,
+  ENGINE_ERROR_PREFIX, isResultKey, SIM_FAILED_RECORD, SIM_PROTOCOL, SIM_RUN_RECORD,
+  type EngineState, type PartInfo, type SimAuthor, type SimJob, type SimFailedRecord, type SimFailureKind,
   type SimPart, type SimRunRecord, type SimSettings, type SimulateReply,
 } from '@pulseos/sim-protocol'
-import { EngineConnection, EngineToolError, EngineUnavailableError, type EngineStatus, type Progress } from './engine.ts'
+import { EngineConnection, EngineToolError, EngineUnavailableError } from './engine.ts'
 import { launchSpec, type EngineConfig } from './launch.ts'
 
-export { EngineUnavailableError, EngineToolError, type EngineStatus, type Progress } from './engine.ts'
+export { EngineUnavailableError, EngineToolError } from './engine.ts'
+export type { EngineState, EngineStatus, Progress, SimJob } from '@pulseos/sim-protocol'
 export type { EngineConfig } from './launch.ts'
 
 declare module '@deepseek-ai/dsh-session/types' {
@@ -69,20 +70,6 @@ export interface SimRequest {
 
 export type SimOutcome = { ok: true; run: SimRunRecord } | { ok: false; failure: SimFailedRecord }
 
-/** A queued or running job. */
-export interface SimJob {
-  id: string
-  sessionId: string
-  rev: number
-  engine: string
-  phantom: string
-  author: SimAuthor
-  state: 'queued' | 'running'
-  progress: Progress | null
-  queuedAt: number
-  startedAt: number | null
-}
-
 /** The request cannot be served in the session's current state (no sequence, unknown revision or engine). */
 export class SimRequestError extends Error {
   override name = 'SimRequestError'
@@ -91,16 +78,6 @@ export class SimRequestError extends Error {
 /** A stored result is missing or does not match its key. */
 export class ResultUnavailableError extends Error {
   override name = 'ResultUnavailableError'
-}
-
-/** Engine status for the panel. */
-export interface EngineState {
-  id: string
-  launcher: EngineConfig['launcher']
-  status: EngineStatus
-  error: string | null
-  info: EngineInfo | null
-  phantoms: PhantomInfo[] | null
 }
 
 /** Service configuration. */
@@ -163,6 +140,7 @@ export class PulseSimService extends Service {
       config.engines[id] = resolved
       this.connections.set(id, new EngineConnection(id, () => launchSpec(resolved, this.resultDir, { uid: process.getuid?.() ?? 10001, gid: process.getgid?.() ?? 10001 }), {
         connectTimeoutMs: config.connectTimeoutMs, idleShutdownMs: config.idleShutdownMs, onChange: () => { this.notify('*') },
+        prepare: async () => { await mkdir(this.resultDir, { recursive: true }) },
       }))
     }
   }
@@ -274,7 +252,7 @@ export class PulseSimService extends Service {
     const sessionId = String(session.id)
     const queue = this.queues.get(engine) ?? []
     this.queues.set(engine, queue)
-    for (const id of [...queue]) {
+    for (const id of queue.slice()) {
       const entry = this.jobs.get(id)!
       if (entry.job.sessionId === sessionId && entry.job.phantom === phantom) this.finish(id, { kind: 'superseded', message: `superseded by a newer request (r${revision.rev})` }, false)
     }
@@ -395,7 +373,7 @@ export class PulseSimService extends Service {
     } catch (error) {
       if (controller.signal.aborted) this.finish(id, { kind: 'cancelled', message: 'the simulation was cancelled' }, true)
       else if (error instanceof EngineUnavailableError) this.finish(id, { kind: 'unavailable', message: error.message }, true)
-      else if (error instanceof EngineToolError) this.finish(id, { kind: /cancel/i.test(error.message) ? 'cancelled' : 'input', message: error.message }, true)
+      else if (error instanceof EngineToolError) this.finish(id, { kind: /cancel/i.test(error.message) ? 'cancelled' : error.message.startsWith(ENGINE_ERROR_PREFIX) ? 'engine' : 'input', message: error.message }, true)
       else if (/timed? ?out/i.test((error as Error).message)) this.finish(id, { kind: 'timeout', message: `the simulation did not finish within ${this.config.timeoutMs} ms` }, true)
       else this.finish(id, { kind: 'engine', message: (error as Error).message }, true)
     }

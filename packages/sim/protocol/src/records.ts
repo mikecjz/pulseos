@@ -81,3 +81,33 @@ export function findSimReferences(text: string): SimReferenceToken[] {
 export function formatSimReference(rev: number, phantom: string, engine?: string | null): string {
   return `[[sim:r${rev}/${phantom}${engine ? `@${engine}` : ''}]]`
 }
+
+/** Engine connection state as `ctx.pulseSim` reports it. */
+export type EngineStatus = 'stopped' | 'starting' | 'ready' | 'unavailable'
+
+/** Progress of a running simulation. */
+export interface Progress { done: number; total: number | null; message: string | null }
+
+/** A queued or running simulation job (in memory on the host; not a record). */
+export interface SimJob {
+  id: string
+  sessionId: string
+  rev: number
+  engine: string
+  phantom: string
+  author: SimAuthor
+  state: 'queued' | 'running'
+  progress: Progress | null
+  queuedAt: number
+  startedAt: number | null
+}
+
+/** An engine and its connection state. */
+export interface EngineState {
+  id: string
+  launcher: 'docker' | 'local' | 'fake'
+  status: EngineStatus
+  error: string | null
+  info: import('./contract.ts').EngineInfo | null
+  phantoms: import('./contract.ts').PhantomInfo[] | null
+}

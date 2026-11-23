@@ -38,7 +38,7 @@ export function summarize(run: SimRunRecord, options: { defaultEngine: string; p
   const total = run.timing.totalMs ?? Object.values(run.timing).reduce((a, b) => a + b, 0)
   lines.push(`Simulation ${runReference(run, options.defaultEngine)}: r${run.rev} (${run.seq}) on phantom ${run.phantom} with ${run.engine} ${run.engineVersion}, ${run.device}, ${run.cached ? 'from cache' : ms(total)}.`)
   const { grid, stats } = run
-  lines.push(`Acquisition: ${grid.nx} x ${grid.ny} samples, FOV ${round(grid.fov[0] * 1e3)} x ${round(grid.fov[1] * 1e3)} mm${grid.cartesian ? '' : ' (not exactly Cartesian)'}; ${stats.repetitions} repetitions simulated on a ${stats.simResolution}^2 grid.`)
+  lines.push(`Acquisition: ${grid.nx} x ${grid.ny} samples, FOV ${round(grid.fov[0] * 1e3)} x ${round(grid.fov[1] * 1e3)} mm${grid.cartesian ? '' : ' (not exactly Cartesian)'}; ${stats.repetitions} repetitions simulated on a ${stats.simResolution}^2 grid, starting from full magnetisation (only the sequence's own dummy scans approach steady state).`)
   if (options.params !== undefined) {
     const quoted = CONTRAST_PARAMS.filter(([name]) => options.params![name] !== undefined).map(([name, f]) => `${name} ${f(options.params![name]!)}`)
     if (quoted.length > 0) lines.push(`Sequence at r${run.rev}: ${quoted.join(', ')}.`)

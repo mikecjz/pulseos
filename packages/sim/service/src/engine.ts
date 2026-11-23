@@ -6,12 +6,10 @@ import { Client } from '@modelcontextprotocol/client'
 import { StdioClientTransport } from '@modelcontextprotocol/client/stdio'
 import {
   parseEngineInfo, parsePhantoms, parseSimulateReply, SIM_TOOLS,
-  type EngineInfo, type PhantomInfo, type SimulateArgs, type SimulateReply,
+  type EngineInfo, type EngineStatus, type PhantomInfo, type Progress, type SimulateArgs, type SimulateReply,
 } from '@pulseos/sim-protocol'
 import type { LaunchSpec } from './launch.ts'
 
-/** Connection state shown to the panel. */
-export type EngineStatus = 'stopped' | 'starting' | 'ready' | 'unavailable'
 
 /** The engine could not be started or reached. */
 export class EngineUnavailableError extends Error {
@@ -23,8 +21,6 @@ export class EngineToolError extends Error {
   override name = 'EngineToolError'
 }
 
-/** Progress of a running call. */
-export interface Progress { done: number; total: number | null; message: string | null }
 
 interface Live { client: Client; transport: StdioClientTransport; info: EngineInfo; phantoms: PhantomInfo[] }
 
@@ -43,7 +39,7 @@ export class EngineConnection {
   constructor(
     readonly id: string,
     private readonly spec: () => LaunchSpec,
-    private readonly options: { connectTimeoutMs: number; idleShutdownMs: number; onChange?: () => void },
+    private readonly options: { connectTimeoutMs: number; idleShutdownMs: number; onChange?: () => void; prepare?: () => Promise<void> },
   ) {}
 
   /** Start the engine (if needed) and return its identity and phantoms. */
@@ -59,6 +55,8 @@ export class EngineConnection {
 
   private async open(): Promise<Live> {
     this.set('starting', null)
+    // E.g. create the result directory: Docker would create a missing mount source owned by root.
+    await this.options.prepare?.()
     const spec = this.spec()
     const transport = new StdioClientTransport({ command: spec.command, args: spec.args, env: spec.env, stderr: 'pipe' })
     this.stderr = ''
@@ -70,6 +68,7 @@ export class EngineConnection {
       const info = parseEngineInfo((await client.callTool({ name: SIM_TOOLS.info, arguments: {} }, timeout)).structuredContent)
       const phantoms = parsePhantoms((await client.callTool({ name: SIM_TOOLS.phantoms, arguments: {} }, timeout)).structuredContent)
       const live = { client, transport, info, phantoms }
+      // oxlint-disable-next-line unicorn/prefer-add-event-listener -- the SDK exposes only this hook.
       client.onclose = () => {
         // The process exited or the pipe closed; the next call starts a new one.
         if (this.live !== undefined) {
@@ -127,7 +126,8 @@ export class EngineConnection {
         onprogress: (p) => { options.onprogress({ done: p.progress, total: p.total ?? null, message: p.message ?? null }) },
       })
       if (result.isError === true) {
-        const text = (result.content as { type: string; text?: string }[]).map(c => c.text ?? '').join('\n').trim()
+        // Python FastMCP prefixes every error with "Error executing tool <name>: "; the rest is the engine's message.
+        const text = (result.content as { type: string; text?: string }[]).map(c => c.text ?? '').join('\n').trim().replace(/^Error executing tool \S+: /, '')
         throw new EngineToolError(text || 'the engine reported an error')
       }
       return parseSimulateReply(result.structuredContent)
