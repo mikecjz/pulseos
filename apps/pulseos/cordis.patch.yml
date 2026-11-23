@@ -16,3 +16,11 @@
       name: '../../packages/seq/viewer/src/index.ts'
     - id: pulseos-brand
       name: '../../packages/app/brand/src/index.ts'
+    # Simulation (sims/README.md): engines are MCP servers; mrzero runs in Docker on GPU 0 by
+    # default. Without Docker or a GPU, override `engines.mrzero` (launcher: local, gpu: null).
+    - id: pulseos-sim-service
+      name: '../../packages/sim/service/src/index.ts'
+    - id: pulseos-sim-tools
+      name: '../../packages/sim/tools/src/index.ts'
+    - id: pulseos-sim-viewer
+      name: '../../packages/sim/viewer/src/index.ts'

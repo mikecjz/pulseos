@@ -1,0 +1,38 @@
+{
+  "name": "@pulseos/sim-viewer",
+  "description": "PulseOS simulation panel: host routes and the right-sidebar Simulation page for the DSH Web client",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./client": {
+      "default": "./lib/client.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-renderer",
+        "@deepseek-ai/dsh-client-ui-sidebar-right",
+        "@deepseek-ai/dsh-api-session-controller",
+        "@deepseek-ai/dsh-client-ui-conversation",
+        "@deepseek-ai/dsh-client-ui-input-trigger",
+        "@deepseek-ai/dsh-client-ui-theme"
+      ]
+    }
+  },
+  "scripts": {
+    "bundle": "node ../../../dsh/node_modules/tsdown/dist/run.mjs"
+  },
+  "dependencies": {
+    "@pulseos/seq-protocol": "workspace:*",
+    "@pulseos/seq-service": "workspace:*",
+    "@pulseos/sim-protocol": "workspace:*",
+    "@pulseos/sim-service": "workspace:*"
+  },
+  "license": "MIT"
+}
