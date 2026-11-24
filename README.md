@@ -7,6 +7,10 @@
   </picture>
 </p>
 
+<p align="center">
+  <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-blue.svg"></a>
+</p>
+
 A platform for MR pulse sequence development with an LLM in the loop. It is built from [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (DSH) plugins: a slim chat panel on the left, an interactive sequence viewer on the right, and a [pypulseq](https://github.com/imr-framework/pypulseq) backend. Every sequence element has a stable ID, so it can be referenced in chat and changed from there.
 
 The plan and milestones are tracked in POS-4. Milestones land as stacked pull requests; the stack is at **M4: the viewer**: chat on the left, the interactive sequence viewer on the right. The model builds, inspects, edits and compares the 2D GRE; every element can be clicked into chat as `[[gre2d:excitation.rf|r1]]`, and references in chat highlight the element in the viewer.
@@ -76,3 +80,7 @@ pnpm run test:python   # pytest, python/
 ## Scanner profiles
 
 Scanner limits live in `profiles/scanner/<id>.json`. The default is `generic` (3 T, 40 mT/m, 150 T/m/s). See [profiles/scanner/README.md](profiles/scanner/README.md) for fields and how to select another scanner.
+
+## License
+
+PulseOS is released under the [MIT License](LICENSE). The `dsh/` submodule (DeepSeek Harness) and other third-party dependencies are covered by their own licenses.
