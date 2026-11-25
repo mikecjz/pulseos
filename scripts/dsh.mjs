@@ -6,9 +6,15 @@
  * imports, including those in PulseOS plugin source, through dsh/tsconfig.json.
  * DSH_HOME defaults to .dsh-home/ in this repository so development profiles
  * stay out of the user's ~/.dsh.
+ *
+ * PULSEOS_MODEL=<route>/<model id> selects another model provider; see
+ * scripts/models.mjs. The launcher writes that selection as a patch file in
+ * DSH_HOME and passes it after the PulseOS overlay.
  */
 import { spawn } from 'node:child_process'
-import { existsSync } from 'node:fs'
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
+import { join, resolve } from 'node:path'
+import { modelPatch } from './models.mjs'
 import { appPatch, defaultDshHome, dshRoot, repoRoot } from './paths.mjs'
 
 const [profile, ...rest] = process.argv.slice(2)
@@ -23,10 +29,28 @@ for (const [pkg, label] of [['seq/viewer', 'sequence viewer'], ['app/brand', 'br
     process.exit(1)
   }
 }
-const child = spawn(process.execPath, ['--import', 'tsx/esm', 'apps/cli/src/bin.ts', profile, '--patch', appPatch, ...rest], {
+const env = { DSH_HOME: defaultDshHome, ...process.env }
+const patches = ['--patch', appPatch]
+let selection
+try {
+  selection = modelPatch(env)
+} catch (error) {
+  console.error(error.message)
+  process.exit(2)
+}
+if (selection !== null) {
+  // The CLI resolves a relative DSH_HOME against its working directory, dsh/.
+  const home = resolve(dshRoot, env.DSH_HOME)
+  mkdirSync(home, { recursive: true })
+  // JSON is YAML; the file is rewritten on every launch, so it never goes stale.
+  const file = join(home, 'pulseos-model.patch.yml')
+  writeFileSync(file, `${JSON.stringify(selection, null, 2)}\n`)
+  patches.push('--patch', file)
+}
+const child = spawn(process.execPath, ['--import', 'tsx/esm', 'apps/cli/src/bin.ts', profile, ...patches, ...rest], {
   cwd: dshRoot,
   stdio: 'inherit',
-  env: { DSH_HOME: defaultDshHome, ...process.env },
+  env,
 })
 for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => child.kill(signal))
 child.on('exit', (code, signal) => process.exit(code ?? (signal ? 1 : 0)))

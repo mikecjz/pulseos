@@ -30,7 +30,7 @@ packages/<group>/    PulseOS DSH plugins (pnpm workspace)
 apps/pulseos/        cordis.patch.yml: the PulseOS overlay on a DSH profile
 profiles/scanner/    scanner profile JSON files, shared by TypeScript and Python
 python/              pulseos_seq: recipes, SeqBuilder, element IDs, model JSON, build runner
-scripts/             bootstrap, DSH launcher, boot smoke
+scripts/             bootstrap, DSH launcher and its model selection, boot smoke
 ```
 
 ## Requirements
@@ -58,7 +58,36 @@ pnpm run dsh <profile> ... # any DSH profile with the overlay, e.g. `pnpm run ds
 
 In the Web UI, the sequence viewer opens on the right as soon as a session exists, showing "No sequence built yet" until something is built. Ask the model to build the sequence (for example "Build the 2D GRE"), or click "Build gre2d with defaults". If you close the viewer it stays closed for that session; reopen it from the right sidebar's "+" as "Sequence viewer". Click an element to inspect it, press `R` or "Reference in chat" to put it into your message, or type `@` and pick from "Sequence". Without a model key, the viewer's empty state can still build the default recipe.
 
-The launcher runs the DSH CLI from `dsh/` source and passes `apps/pulseos/cordis.patch.yml` as `--patch`. `DSH_HOME` defaults to `.dsh-home/` in this checkout, so development profiles and credentials stay out of `~/.dsh`; export `DSH_HOME` to override. A model call needs `DEEPSEEK_API_KEY` or a key saved on the Web Models page.
+The launcher runs the DSH CLI from `dsh/` source and passes `apps/pulseos/cordis.patch.yml` as `--patch`. `DSH_HOME` defaults to `.dsh-home/` in this checkout, so development profiles and credentials stay out of `~/.dsh`; export `DSH_HOME` to override. With the default model, a model call needs `DEEPSEEK_API_KEY` or a key saved on the Web Models page.
+
+## Models
+
+DeepSeek is the default. Other providers go through DSH's pi-ai adapter (`llm-pi-ai`, part of every DSH profile), which speaks OpenAI-compatible Chat Completions and Anthropic's native Messages API. There are two ways to use another provider:
+
+- **Web Models page.** In `pnpm run web`, open Models, add a provider (OpenRouter, OpenAI, Anthropic, Moonshot/Kimi, Z.ai/GLM, a custom OpenAI-compatible endpoint, ...) with its key, and pick its model in the chat's model selector.
+- **`PULSEOS_MODEL=<route>/<model id>`** for any profile, including `headless`. The launcher adds one more patch layer (`$DSH_HOME/pulseos-model.patch.yml`) that declares the route and makes the model the default for new sessions.
+
+```sh
+ANTHROPIC_API_KEY=... PULSEOS_MODEL=anthropic/claude-sonnet-5-5 pnpm run web
+ZAI_API_KEY=... PULSEOS_MODEL=zai/glm-5.3 pnpm run dsh headless "Build the 2D GRE"
+OPENROUTER_API_KEY=... PULSEOS_MODEL=openrouter/moonshotai/kimi-k3 pnpm run web
+PULSEOS_LLM_BASE_URL=http://localhost:8000/v1 PULSEOS_LLM_API_KEY=local PULSEOS_MODEL=local/qwen3-32b pnpm run web
+```
+
+| Route | Provider | Protocol | Key |
+|---|---|---|---|
+| `deepseek-official` | DeepSeek, native DSH adapter (default) | Anthropic-compatible | `DEEPSEEK_API_KEY` |
+| `openai` | OpenAI | Responses | `OPENAI_API_KEY` |
+| `anthropic` | Anthropic Claude | Messages | `ANTHROPIC_API_KEY` |
+| `openrouter` | OpenRouter (model ids keep their `vendor/` prefix) | per model, mostly Chat Completions | `OPENROUTER_API_KEY` |
+| `moonshotai`, `moonshotai-cn` | Moonshot Kimi | Chat Completions | `MOONSHOT_API_KEY` |
+| `zai` | Z.ai GLM | Chat Completions | `ZAI_API_KEY` |
+| `deepseek` | DeepSeek through pi-ai | Chat Completions | `DEEPSEEK_API_KEY` |
+| any other lowercase name | custom endpoint; needs `PULSEOS_LLM_BASE_URL` | `PULSEOS_LLM_API`: `openai-completions` (default), `openai-responses` or `anthropic-messages` | `PULSEOS_LLM_API_KEY` |
+
+A model id the installed pi-ai catalog does not list still works on a single-protocol route; on OpenRouter it also needs `PULSEOS_LLM_API` (usually `openai-completions`). `PULSEOS_LLM_BASE_URL` also overrides the endpoint of a listed route, for example a corporate proxy. Keys resolve per request from the environment, a project or user `.env`, or the DSH credential store; a missing key fails the request with `MISSING_CREDENTIAL`. A malformed selection stops the launcher before DSH starts.
+
+While `PULSEOS_MODEL` is set, the launcher's patch wins over Models-page edits to the pi-ai providers and to the default model, because DSH refuses form writes that a command-line patch overrides. Unset it to manage providers from the Models page again.
 
 ## Checks
 
