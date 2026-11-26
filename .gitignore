@@ -10,3 +10,7 @@ coverage/
 *.tsbuildinfo
 .pulseos-data/
 test-results/
+# Team secrets come from Infisical (docs/secrets.md); never commit them.
+.env
+.env.*
+!.env.example
