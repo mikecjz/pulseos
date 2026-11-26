@@ -123,7 +123,8 @@ def build_model(*, seq_name: str, seq: pp.Sequence, records: BuilderRecords, dec
         "profile": profile,
         "params": params_json,
         "duration": total,
-        "loops": [{"name": n, "size": s} for n, s in records.loops.items()],
+        "loops": [{"name": n, "size": s, **({"inner": True} if n in records.inner_loops else {})}
+                  for n, s in records.loops.items()],
         "roles": list(roles.values()),
         "blocks": blocks_json,
         "events": events_json,

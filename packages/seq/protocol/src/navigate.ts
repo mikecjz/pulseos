@@ -62,6 +62,18 @@ function loopKey(loop: Record<string, number>): string {
   return Object.entries(loop).map(([name, index]) => `${name}=${index}`).join(',')
 }
 
+/**
+ * The loop indices that identify a block's repetition: its loop indices without the model's inner loops.
+ * @param model - the sequence model.
+ * @param loop - a block's or event's loop indices.
+ * @returns the repetition's loop indices.
+ */
+export function repetitionLoop(model: Pick<SequenceModel, 'loops'>, loop: Record<string, number>): Record<string, number> {
+  const inner = model.loops.filter(l => l.inner === true)
+  if (inner.length === 0) return loop
+  return Object.fromEntries(Object.entries(loop).filter(([name]) => !inner.some(l => l.name === name)))
+}
+
 /** Area (1/m) of a gradient event played after time `from`. Trapezoids exactly, other shapes by time fraction. */
 function areaAfter(event: SequenceEvent, from: number): number {
   if (event.kind !== 'trap' && event.kind !== 'grad') return 0
@@ -111,10 +123,11 @@ export function kspaceRepetitions(model: SequenceModel): KspaceRepetition[] {
   const reps: KspaceRepetition[] = []
   let key = ''
   for (const block of blocks) {
-    const k = loopKey(block.loop)
+    const loop = repetitionLoop(model, block.loop)
+    const k = loopKey(loop)
     if (reps.length === 0 || k !== key) {
       key = k
-      reps.push({ loop: block.loop, start: block.t0, end: block.t0 + block.duration, adcRole: null, ky: null, kz: null })
+      reps.push({ loop, start: block.t0, end: block.t0 + block.duration, adcRole: null, ky: null, kz: null })
     } else {
       reps.at(-1)!.end = block.t0 + block.duration
     }
@@ -205,7 +218,8 @@ export function findNavigation(model: SequenceModel, request: NavigationRequest)
       }
     }
     if (frame === 'tr' && loop !== null) {
-      const rep = kspaceRepetitions(model).find(x => loopKey(x.loop) === loopKey(loop))
+      const key = loopKey(repetitionLoop(model, loop))
+      const rep = kspaceRepetitions(model).find(x => loopKey(x.loop) === key)
       if (rep !== undefined) { t0 = rep.start; t1 = rep.end }
     }
     return { ok: true, select: found.id, view: pad(t0, t1), label: found.id, matches: 1 }
@@ -232,8 +246,9 @@ export function findNavigation(model: SequenceModel, request: NavigationRequest)
     if (request.kz !== undefined) parts.push(`kz lines are ${range(reps.map(x => x.kz))}`)
     return { ok: false, reason: `no repetition matches${parts.length > 0 ? `; ${parts.join(', ')}` : ''}` }
   }
-  const role = request.role ?? first.adcRole ?? model.blocks.find(b => loopKey(b.loop) === loopKey(first.loop))?.role
-  const block = model.blocks.find(b => b.role === role && loopKey(b.loop) === loopKey(first.loop))
+  const inFirst = (b: SequenceModel['blocks'][number]) => loopKey(repetitionLoop(model, b.loop)) === loopKey(first.loop)
+  const role = request.role ?? first.adcRole ?? model.blocks.find(inFirst)?.role
+  const block = model.blocks.find(b => b.role === role && inFirst(b))
   if (block === undefined) return { ok: false, reason: `role "${role}" has no block at ${loopKey(first.loop)}` }
   const select = block.id
   const k = [first.ky === null ? null : `ky = ${first.ky}`, first.kz === null || request.kz === undefined ? null : `kz = ${first.kz}`].filter(x => x !== null)

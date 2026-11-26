@@ -1,9 +1,11 @@
 /** Per-session viewer state shared by the viewer tab and the reference chips. */
 import {
   parseElementId, resolve, resolveBetween, ElementIdError, formatElementId,
-  type Channel, type NavigateRecord, type SequenceModel,
+  type Channel, type NavigateRecord, type SequenceModel, type SequenceTemplate,
 } from '@pulseos/seq-protocol'
-import { BUILD_PATH, MODEL_PATH, RECIPE_PATH, SEQ_PATH, STATE_PATH, type ViewerState } from '../routes.ts'
+import {
+  BUILD_PATH, MAX_SEQ_FILE_BYTES, MODEL_PATH, READ_PATH, RECIPE_PATH, SEQ_PATH, STATE_PATH, TEMPLATES_PATH, type ReadResult, type ViewerState,
+} from '../routes.ts'
 import { clampView, SequenceIndex, type Viewport } from './geometry.ts'
 
 /** Chip presentation state for one `[[id|rN]]`. */
@@ -29,11 +31,19 @@ export interface ViewerSnapshot {
   readonly toast: string | null
   readonly flash: { ids: ReadonlySet<string>; at: number } | null
   readonly chips: number
+  /** Template catalogue; null until loaded. */
+  readonly templates: readonly SequenceTemplate[] | null
+  /**
+   * An uploaded `.seq` file shown read-only instead of the session's sequence: `reading` while the
+   * host renders it, then `model`/`index`/`view` show the file. It is not part of the session.
+   */
+  readonly file: { name: string; status: 'reading' | 'shown' } | null
 }
 
 const INITIAL: ViewerSnapshot = {
   status: 'loading', error: null, state: null, pinnedRev: null, shownRev: null, model: null, index: null, view: null,
   selection: null, hover: null, pulse: 0, recipe: null, phaseOpen: false, hidden: [], toast: null, flash: null, chips: 0,
+  templates: null, file: null,
 }
 
 function api(path: string, params: Record<string, string | number>): string {
@@ -133,7 +143,7 @@ export class ViewerStore {
     if (state.building) this.pollTimer = setInterval(() => { void this.refresh() }, 1000)
     const latest = state.revisions.at(-1)?.rev ?? null
     const target = this.snapshot.pinnedRev ?? latest
-    if (target !== null && target !== this.snapshot.shownRev) await this.show(target, previousLatest !== null && latest !== previousLatest && this.snapshot.pinnedRev === null)
+    if (target !== null && target !== this.snapshot.shownRev && this.snapshot.file === null) await this.show(target, previousLatest !== null && latest !== previousLatest && this.snapshot.pinnedRev === null)
     if (latest !== previousLatest) this.set({ chips: this.snapshot.chips + 1 })
   }
 
@@ -158,6 +168,7 @@ export class ViewerStore {
       return
     }
     if (this.disposed) return
+    if (this.snapshot.file !== null) return // closeFile() shows the session's sequence again
     const index = new SequenceIndex(model)
     const firstRep = index.repetitions[0]
     const view = this.snapshot.view === null
@@ -183,6 +194,7 @@ export class ViewerStore {
 
   /** Apply a navigation the model requested (`seq_show`): show its revision, select and frame. */
   async navigate(record: NavigateRecord): Promise<void> {
+    this.closeFile()
     await this.refresh()
     const latest = this.snapshot.state?.revisions.at(-1)?.rev ?? null
     if (latest === null || this.disposed) return
@@ -204,6 +216,7 @@ export class ViewerStore {
 
   /** Select and frame an element (from a chip click). Gone elements switch to the chip's revision. */
   async reveal(id: string, rev: number | null): Promise<void> {
+    this.closeFile()
     await this.refresh()
     const latest = this.snapshot.state?.revisions.at(-1)?.rev ?? null
     if (latest === null) return
@@ -279,13 +292,89 @@ export class ViewerStore {
   }
 
   async buildDefault(): Promise<void> {
+    await this.requestBuild({ sessionId: this.sessionId })
+  }
+
+  /** Load the template catalogue once. */
+  async loadTemplates(): Promise<void> {
+    if (this.snapshot.templates !== null) return
+    try {
+      const templates = await getJson<SequenceTemplate[]>(api(TEMPLATES_PATH, {}))
+      if (!this.disposed) this.set({ templates })
+    } catch (error) {
+      this.set({ templates: [], toast: `Could not load the templates: ${(error as Error).message}` })
+    }
+  }
+
+  /**
+   * Build a template as the session's next revision. A failure is recorded like any build and
+   * shown by the failure banner.
+   * @param name - template (bundled recipe) name.
+   */
+  async buildTemplate(name: string): Promise<void> {
+    this.closeFile()
+    this.set({ pinnedRev: null })
+    await this.requestBuild({ sessionId: this.sessionId, template: name })
+  }
+
+  private async requestBuild(params: Record<string, string>): Promise<void> {
     this.set({ state: this.snapshot.state === null ? null : { ...this.snapshot.state, building: true } })
     try {
-      const response = await fetch(api(BUILD_PATH, { sessionId: this.sessionId }), { method: 'POST', credentials: 'same-origin' })
-      if (!response.ok && response.status !== 422) this.set({ toast: `Build request failed: HTTP ${response.status}` })
+      const response = await fetch(api(BUILD_PATH, params), { method: 'POST', credentials: 'same-origin' })
+      if (!response.ok && response.status !== 422) {
+        let message = `HTTP ${response.status}`
+        try {
+          message = ((await response.json()) as { error?: string }).error ?? message
+        } catch {
+          // The body was not JSON; keep the status line.
+        }
+        this.set({ toast: `Build request failed: ${message}` })
+      }
     } finally {
       await this.refresh()
     }
+  }
+
+  /**
+   * Render a `.seq` file read-only in place of the session's sequence. The file goes to the host,
+   * which reads it with pypulseq; nothing is added to the session.
+   * @param file - the chosen file.
+   */
+  async openFile(file: File): Promise<void> {
+    if (file.size > MAX_SEQ_FILE_BYTES) {
+      this.set({ toast: `${file.name} is larger than ${MAX_SEQ_FILE_BYTES >> 20} MiB` })
+      return
+    }
+    const previous = this.snapshot.file
+    this.set({ file: { name: file.name, status: 'reading' } })
+    let result: ReadResult
+    try {
+      const response = await fetch(api(READ_PATH, { name: file.name }), {
+        method: 'POST', credentials: 'same-origin', body: await file.arrayBuffer(), headers: { 'content-type': 'application/octet-stream' },
+      })
+      result = response.ok || response.status === 422
+        ? await response.json() as ReadResult
+        : { ok: false, error: { kind: 'http', message: ((await response.json().catch(() => ({}))) as { error?: string }).error ?? `HTTP ${response.status}`, line: null } }
+    } catch (error) {
+      result = { ok: false, error: { kind: 'http', message: (error as Error).message, line: null } }
+    }
+    if (this.disposed || this.snapshot.file?.name !== file.name || this.snapshot.file.status !== 'reading') return
+    if (!result.ok) {
+      this.set({ file: previous, toast: `Could not read ${file.name}: ${result.error.message}` })
+      if (previous === null) void this.refresh() // a revision that arrived while reading is shown now
+      return
+    }
+    const index = new SequenceIndex(result.model)
+    const first = index.repetitions[0]
+    const view = clampView({ t0: 0, t1: first === undefined ? result.model.duration : Math.min(result.model.duration, index.repetitions[1]?.end ?? first.end) }, result.model.duration)
+    this.set({ file: { name: result.name, status: 'shown' }, model: result.model, index, view, shownRev: null, selection: null, hover: null, flash: null })
+  }
+
+  /** Leave the read-only file view and show the session's sequence again. */
+  closeFile(): void {
+    if (this.snapshot.file === null) return
+    this.set({ file: null, model: null, index: null, view: null, shownRev: null, selection: null, flash: null })
+    void this.refresh()
   }
 
   /**

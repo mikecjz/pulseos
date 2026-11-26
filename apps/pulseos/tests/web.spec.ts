@@ -84,7 +84,7 @@ describe.skipIf(executablePath === undefined)('sequence viewer in dsh web', () =
     await page.keyboard.press('Enter')
     const viewer = page.locator('[data-pulseos-viewer] canvas[role="img"]')
     await viewer.waitFor({ timeout: 60_000 })
-    await expect.poll(() => page.locator('[data-pulseos-viewer] select').inputValue(), { timeout: 30_000 }).toBe('latest')
+    await expect.poll(() => page.locator('[data-pulseos-viewer] select[aria-label="Revision"]').inputValue(), { timeout: 30_000 }).toBe('latest')
     await expect.poll(async () => (await page.locator('[data-pulseos-viewer] select option').first().textContent()) ?? '', { timeout: 30_000 }).toBe('latest (r1)')
     await page.locator('[data-pulseos-viewer]').getByText('timing 0').waitFor({ state: 'visible', timeout: 15_000 })
     await shot('1-viewer')

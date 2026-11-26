@@ -1,7 +1,7 @@
 /** The sequence viewer tab body. */
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
 import {
-  resolve, resolveBetween, type Channel, type ResolvedElement, type RevisionRecord, type SequenceEvent, type SequenceModel,
+  resolve, resolveBetween, type Channel, type ResolvedElement, type RevisionRecord, type SequenceEvent, type SequenceModel, type SequenceTemplate,
 } from '@pulseos/seq-protocol'
 import { CHANNELS, clampView, formatDuration, formatTime, type Viewport } from './geometry.ts'
 import { DARK, drawOverview, drawTracks, hitTest, layoutRows, LIGHT, type DrawInput, type Palette, type Row } from './draw.ts'
@@ -75,6 +75,7 @@ export function Viewer({ sessionId, store, actions, scheme }: ViewerProps) {
   const snap = useSnapshot(store)
   const theme = useSyncExternalStore(scheme.subscribe, scheme.getSnapshot, scheme.getSnapshot)
   const palette = theme === 'dark' ? DARK : LIGHT
+  useEffect(() => { void store.loadTemplates() }, [store])
   useEffect(() => {
     if (snap.toast === null) return
     const timer = setTimeout(() => { store.dismissToast() }, 4500)
@@ -96,7 +97,15 @@ export function Viewer({ sessionId, store, actions, scheme }: ViewerProps) {
         </div>
       )}
       {failure !== null && <FailureBanner failure={failure} actions={actions} />}
-      {snap.pinnedRev !== null && latest !== null && snap.pinnedRev !== latest.rev && (
+      {snap.file !== null && (
+        <div className={styles.bannerInfo} role="status">
+          {snap.file.status === 'reading'
+            ? <>Reading {snap.file.name}…</>
+            : <>Read-only render of <b>{snap.file.name}</b> · not part of this session ·</>}
+          <button type="button" className={styles.linkButton} onClick={() => { store.closeFile() }}>{snap.file.status === 'reading' ? 'Cancel' : 'Close file'}</button>
+        </div>
+      )}
+      {snap.file === null && snap.pinnedRev !== null && latest !== null && snap.pinnedRev !== latest.rev && (
         <div className={styles.bannerInfo}>
           Viewing r{snap.pinnedRev} (read-only) ·
           <button type="button" className={styles.linkButton} onClick={() => { void store.pin(null) }}>Back to latest r{latest.rev}</button>
@@ -104,7 +113,7 @@ export function Viewer({ sessionId, store, actions, scheme }: ViewerProps) {
       )}
       {snap.model === null || snap.index === null || snap.view === null
         ? <EmptyState snap={snap} store={store} />
-        : <Workspace snap={snap} store={store} actions={actions} palette={palette} model={snap.model} view={snap.view} shown={shown} />}
+        : <Workspace snap={snap} store={store} actions={actions} palette={palette} model={snap.model} view={snap.view} shown={snap.file === null ? shown : null} readOnly={snap.file !== null} />}
       {snap.toast !== null && <div className={styles.toast} role="status">{snap.toast}</div>}
     </div>
   )
@@ -128,10 +137,11 @@ function Toolbar({ snap, store, shown, latest }: { snap: ViewerSnapshot; store: 
     store.setView({ t0: target.start - (snap.view.t0 - index.repetitions[i]!.start), t1: target.start - (snap.view.t0 - index.repetitions[i]!.start) + (snap.view.t1 - snap.view.t0) })
   }
   const limits = snap.state?.profile.limits ?? {}
+  const file = snap.file?.status === 'shown' ? snap.file : null
   return (
     <div className={styles.toolbar} role="toolbar" aria-label="Sequence viewer toolbar">
-      <span className={styles.chipBox}>seq <b>{snap.model?.seq ?? '—'}</b></span>
-      <label className={styles.chipBox}>
+      <span className={styles.chipBox}>{file === null ? 'seq' : 'file'} <b>{file === null ? (snap.model?.seq ?? '—') : file.name}</b>{file !== null && <span className={styles.kindTag}>read-only</span>}</span>
+      {file === null && <label className={styles.chipBox}>
         rev
         <select
           className={styles.select}
@@ -147,7 +157,9 @@ function Toolbar({ snap, store, shown, latest }: { snap: ViewerSnapshot; store: 
         </select>
         {shown !== null && <span className={styles.kindTag}>{shown.kind}</span>}
         {snap.state?.building === true && <span className={styles.spinner} aria-label="Building" />}
-      </label>
+      </label>}
+      <TemplatePicker snap={snap} store={store} />
+      <OpenSeqFile store={store} />
       <div className={styles.segmented}>
         <button type="button" onClick={() => { if (snap.model) store.setView({ t0: 0, t1: snap.model.duration }) }}>Fit all</button>
         <button type="button" onClick={() => { repetitionSpan(1) }}>1 TR</button>
@@ -176,21 +188,76 @@ function Toolbar({ snap, store, shown, latest }: { snap: ViewerSnapshot; store: 
       >
         <span className={styles.dot} style={{ background: errors.length > 0 ? 'var(--bad)' : 'var(--ok)' }} /> timing {errors.length}
       </button>
-      {shown !== null && <a className={styles.chipBox} href={store.seqUrl(shown.rev)} download>⤓ .seq</a>}
+      {file === null && shown !== null && <a className={styles.chipBox} href={store.seqUrl(shown.rev)} download>⤓ .seq</a>}
     </div>
+  )
+}
+
+/** Build a template (a bundled recipe: PulseOS's own or one of pypulseq's example sequences) as the next revision. */
+function TemplatePicker({ snap, store, label = 'Template…' }: { snap: ViewerSnapshot; store: ViewerStore; label?: string }) {
+  const templates = snap.templates ?? []
+  const groups: [string, SequenceTemplate[]][] = [
+    ['PulseOS', templates.filter(t => t.origin === 'pulseos')],
+    ['pypulseq examples', templates.filter(t => t.origin !== 'pulseos')],
+  ]
+  return (
+    <select
+      className={`${styles.chipBox} ${styles.select}`}
+      aria-label="Build from template"
+      title="Build a template as the next revision; earlier revisions stay in the history"
+      value=""
+      disabled={templates.length === 0 || snap.state?.building === true || snap.status !== 'ready'}
+      onChange={(event) => { if (event.target.value !== '') void store.buildTemplate(event.target.value) }}
+    >
+      <option value="">{snap.state?.building === true ? 'Building…' : label}</option>
+      {groups.filter(([, list]) => list.length > 0).map(([group, list]) => (
+        <optgroup key={group} label={group}>
+          {list.map(t => <option key={t.name} value={t.name} title={`${t.description} (${t.origin})`}>{t.title}</option>)}
+        </optgroup>
+      ))}
+    </select>
+  )
+}
+
+/** Choose a `.seq` file to render read-only. */
+function OpenSeqFile({ store, primary = false }: { store: ViewerStore; primary?: boolean }) {
+  const input = useRef<HTMLInputElement | null>(null)
+  return (
+    <>
+      <button type="button" className={primary ? styles.primary : styles.chipBox} title="Render a .seq file read-only; it is not added to the session" onClick={() => { input.current?.click() }}>
+        Open .seq…
+      </button>
+      <input
+        ref={input}
+        type="file"
+        accept=".seq"
+        hidden
+        aria-label="Open .seq file"
+        onChange={(event) => {
+          const chosen = event.target.files?.[0]
+          event.target.value = ''
+          if (chosen !== undefined) void store.openFile(chosen)
+        }}
+      />
+    </>
   )
 }
 
 function EmptyState({ snap, store }: { snap: ViewerSnapshot; store: ViewerStore }) {
   if (snap.status === 'loading') return <div className={styles.empty}>Loading…</div>
+  if (snap.file?.status === 'reading') return <div className={styles.empty}>Reading {snap.file.name}…</div>
   if ((snap.state?.revisions.length ?? 0) > 0) return <div className={styles.empty}>Loading r{snap.state!.revisions.at(-1)!.rev}…</div>
   return (
     <div className={styles.empty}>
       <div className={styles.emptyTitle}>No sequence built yet</div>
-      <div className={styles.muted}>Ask in chat, for example “Build the 2D GRE and show me the excitation pulse”, or start from the bundled recipe.</div>
-      <button type="button" className={styles.primary} disabled={snap.state?.building === true || snap.status !== 'ready'} onClick={() => { void store.buildDefault() }}>
-        {snap.state?.building === true ? 'Building…' : 'Build gre2d with defaults'}
-      </button>
+      <div className={styles.muted}>Ask in chat, for example “Build the 2D GRE and show me the excitation pulse”, start from the bundled recipe or a template, or open a .seq file to view it read-only.</div>
+      <div className={styles.emptyActions}>
+        <button type="button" className={styles.primary} disabled={snap.state?.building === true || snap.status !== 'ready'} onClick={() => { void store.buildDefault() }}>
+          {snap.state?.building === true ? 'Building…' : 'Build gre2d with defaults'}
+        </button>
+        <TemplatePicker snap={snap} store={store} label="Start from a template…" />
+        <OpenSeqFile store={store} />
+      </div>
     </div>
   )
 }
@@ -208,9 +275,13 @@ function FailureBanner({ failure, actions }: { failure: NonNullable<ViewerSnapsh
   )
 }
 
-interface WorkspaceProps { snap: ViewerSnapshot; store: ViewerStore; actions: ViewerActions; palette: Palette; model: SequenceModel; view: Viewport; shown: RevisionRecord | null }
+interface WorkspaceProps {
+  snap: ViewerSnapshot; store: ViewerStore; actions: ViewerActions; palette: Palette; model: SequenceModel; view: Viewport; shown: RevisionRecord | null
+  /** An uploaded `.seq` file: its elements are not in the session, so nothing can be referenced in chat. */
+  readOnly: boolean
+}
 
-function Workspace({ snap, store, actions, palette, model, view, shown }: WorkspaceProps) {
+function Workspace({ snap, store, actions, palette, model, view, shown, readOnly }: WorkspaceProps) {
   const index = snap.index!
   const [plotRef, plotSize] = useSize<HTMLDivElement>()
   const [overviewRef, overviewSize] = useSize<HTMLDivElement>()
@@ -333,7 +404,7 @@ function Workspace({ snap, store, actions, palette, model, view, shown }: Worksp
     const center = (view.t0 + view.t1) / 2
     switch (event.key) {
       case 'Escape': store.select(null); break
-      case 'r': case 'R': if (snap.selection) actions.reference(snap.selection, snap.pinnedRev); break
+      case 'r': case 'R': if (snap.selection && !readOnly) actions.reference(snap.selection, snap.pinnedRev); break
       case '+': case '=': store.setView({ t0: center - span / 4, t1: center + span / 4 }); break
       case '-': case '_': store.setView({ t0: center - span, t1: center + span }); break
       case 'ArrowLeft': store.setView({ t0: view.t0 - span / 8, t1: view.t1 - span / 8 }); break
@@ -362,7 +433,7 @@ function Workspace({ snap, store, actions, palette, model, view, shown }: Worksp
   const rep = index.repetitionAt((view.t0 + view.t1) / 2)
 
   return (
-    <div className={styles.workspace} onKeyDown={onKeyDown} tabIndex={0} aria-label="Sequence tracks; click to select, R to reference in chat">
+    <div className={styles.workspace} onKeyDown={onKeyDown} tabIndex={0} aria-label={readOnly ? 'Sequence tracks of an uploaded file; click to select' : 'Sequence tracks; click to select, R to reference in chat'}>
       <div className={styles.overviewHead}>
         <span>Overview · {index.repetitions.length} repetitions · {formatDuration(index.duration)}</span>
         <span className={styles.mono}>viewing {formatTime(view.t0)}–{formatTime(view.t1)} · {index.repetitions[rep]?.label}</span>
@@ -427,7 +498,7 @@ function Workspace({ snap, store, actions, palette, model, view, shown }: Worksp
         <span>t = {cursor === null ? '—' : formatTime(cursor, 1e-6)}</span>
         {readout.map(([c, v]) => <span key={c}><span style={{ color: `var(--${c})` }}>{c === 'rf' ? 'RF' : c.replace('g', 'G')}</span> {c === 'adc' ? (v > 0 ? 'on' : 'off') : `${v.toFixed(c === 'rf' ? 2 : 1)}${c === 'rf' ? ' µT' : c === 'gx' ? ' mT/m' : ''}`}</span>)}
       </div>
-      {snap.selection !== null && <Inspector snap={snap} store={store} actions={actions} model={model} shown={shown} view={view} />}
+      {snap.selection !== null && <Inspector snap={snap} store={store} actions={actions} model={model} shown={shown} view={view} readOnly={readOnly} />}
       <ul className={styles.srOnly} aria-label="Sequence roles">
         {model.roles.map(r => <li key={r.id}><button type="button" onClick={() => { store.select(r.id); store.frame(r.id) }}>{r.id}</button></li>)}
       </ul>
@@ -502,7 +573,7 @@ function varying(events: SequenceEvent[]): [string, ReactNode][] {
   return rows
 }
 
-function Inspector({ snap, store, actions, model, shown, view }: { snap: ViewerSnapshot; store: ViewerStore; actions: ViewerActions; model: SequenceModel; shown: RevisionRecord | null; view: Viewport }) {
+function Inspector({ snap, store, actions, model, shown, view, readOnly }: { snap: ViewerSnapshot; store: ViewerStore; actions: ViewerActions; model: SequenceModel; shown: RevisionRecord | null; view: Viewport; readOnly: boolean }) {
   const id = snap.selection!
   const [tab, setTab] = useState<'properties' | 'changes' | 'timing'>('properties')
   const [parent, setParent] = useState<SequenceModel | null>(null)
@@ -539,7 +610,7 @@ function Inspector({ snap, store, actions, model, shown, view }: { snap: ViewerS
         <span className={styles.spacer} />
         <button type="button" className={styles.plain} onClick={() => { store.frame(id) }}>Zoom to</button>
         <button type="button" className={styles.plain} onClick={() => { store.select(id.replace(/@.*$/, '')) }}>All instances</button>
-        <button type="button" className={styles.primary} onClick={() => { actions.reference(id, snap.pinnedRev) }}>Reference in chat <kbd>R</kbd></button>
+        {!readOnly && <button type="button" className={styles.primary} onClick={() => { actions.reference(id, snap.pinnedRev) }}>Reference in chat <kbd>R</kbd></button>}
         <button type="button" className={styles.plain} aria-label="Close inspector" onClick={() => { store.select(null) }}>✕</button>
       </div>
       {found.status === 'gone'
@@ -561,7 +632,9 @@ function Inspector({ snap, store, actions, model, shown, view }: { snap: ViewerS
               )}
               {tab === 'changes' && (
                 <div className={styles.changes}>
-                  {shown === null || shown.parent === null
+                  {readOnly
+                    ? <span className={styles.muted}>An uploaded .seq file has no revision history.</span>
+                    : shown === null || shown.parent === null
                     ? <span className={styles.muted}>r{shown?.rev} is the first revision.</span>
                     : <>
                       <div>r{shown.parent} → r{shown.rev} ({shown.kind}): {shown.cause}</div>
@@ -585,9 +658,11 @@ function Inspector({ snap, store, actions, model, shown, view }: { snap: ViewerS
             <div className={styles.source}>
               <div className={styles.sourceHead}>
                 <span>Recipe source{span ? ` · ${model.recipe.file ?? 'recipe.py'}:${span.startLine}${span.endLine !== span.startLine ? `–${span.endLine}` : ''}` : ''}</span>
-                <span className={styles.faint}>read-only · <button type="button" className={styles.linkButton} onClick={() => { actions.reference(id, snap.pinnedRev) }}>Discuss in chat</button></span>
+                {!readOnly && <span className={styles.faint}>read-only · <button type="button" className={styles.linkButton} onClick={() => { actions.reference(id, snap.pinnedRev) }}>Discuss in chat</button></span>}
               </div>
-              {lines === null || span === null
+              {readOnly
+                ? <div className={styles.muted}>An uploaded .seq file has no recipe. Roles are derived from block contents.</div>
+                : lines === null || span === null
                 ? <div className={styles.muted}>{span === null ? 'No recipe lines for this element.' : 'Loading…'}</div>
                 : (
                   <pre className={styles.code}>

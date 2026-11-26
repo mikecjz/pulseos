@@ -8,7 +8,7 @@ The package has two faces:
 
 ## Host routes
 
-All routes take `sessionId`; `rev` defaults to the latest revision. The browser calls them through the authenticated DSH connection.
+Session routes take `sessionId`; `rev` defaults to the latest revision. The browser calls them through the authenticated DSH connection.
 
 | Route | Returns |
 |---|---|
@@ -17,6 +17,9 @@ All routes take `sessionId`; `rev` defaults to the latest revision. The browser 
 | `GET /api/pulseos.recipe?rev=` | recipe source |
 | `GET /api/pulseos.seq?rev=` | the `.seq` file as a download |
 | `POST /api/pulseos.build` | the empty state's "Build gre2d with defaults"; refused once a sequence exists, because later changes go through chat |
+| `POST /api/pulseos.build?template=<name>` | build a template as the next revision (allowed at any time; earlier revisions stay in the history) |
+| `GET /api/pulseos.templates` | the template catalogue; no `sessionId` |
+| `POST /api/pulseos.read?name=<file>` | body: a `.seq` file (at most 64 MiB); returns its model with derived roles, or the read error (422). Nothing is recorded; no `sessionId` |
 
 ## Browser
 
@@ -35,7 +38,9 @@ The viewer is a right-sidebar page type, `pulseos-sequence`.
   - TR stepping;
   - scanner-profile badge (the limits are in its tooltip);
   - timing counter, which cycles through violations;
-  - `.seq` export.
+  - `.seq` export;
+  - template picker: builds `gre2d` or one of pypulseq's example sequences (GRE, radial GRE, UTE, EPI, spin-echo EPI, TSE, HASTE, MPRAGE) as the next revision;
+  - "Open .seq…": renders a `.seq` file read-only (see below).
 - **Overview strip:** the whole sequence with alternating repetition shading, RF positions and a draggable viewport brush.
 - **Tracks** in the default order RF |B1|, RF phase (collapsed, expandable), Gz, Gy, Gx, ADC, under a time ruler and a lane of pulseq blocks labelled by role.
   - The three gradient tracks share one scale, with dashed lines at the scanner profile's ±max gradient.
@@ -57,8 +62,9 @@ The viewer is a right-sidebar page type, `pulseos-sequence`.
   - Tabs: Properties (values, and what varies across instances), Changes (parameter delta, role diff and recipe diff against the parent revision) and Timing.
   - It shows the fingerprint status against the parent revision.
   - It shows the recipe lines that emit the element, with a "Discuss in chat" action.
+- **Read-only `.seq` files:** "Open .seq…" sends the file to the host, which reads it with pypulseq in the confined runner and derives roles from block contents (`rep` per excitation, inner loop `n` for repeats within a repetition). The viewer shows it in place of the session's sequence with a "Read-only render of <file>" banner and "Close file". The file adds no revision and nothing reaches the model: the revision picker, `.seq` export, "Reference in chat" and `R` are hidden, and the inspector has no recipe or change history. A chat navigation or chip click closes the file first. A file pypulseq cannot read shows a toast and leaves the session's sequence shown.
 - **States:**
-  - empty: "No sequence built yet", with a build action;
+  - empty: "No sequence built yet", with a build action, the template picker and "Open .seq…";
   - building: a spinner on the revision control;
   - build failed: a banner with the error and recipe line, the traceback, and "Reference error in chat", while the last good revision stays shown;
   - backend unavailable: a banner with Retry;
@@ -100,6 +106,8 @@ Deferred to M5:
 - **Restore from the revision picker.** Restore today goes through chat (`seq_restore`).
 
 Not yet built:
+- **Parameters for pypulseq templates** — the vendored examples have no `PARAMS`; their values live in the recipe's `main()` and change through `seq_edit_recipe`. Their derived roles have no recipe source lines.
+- **Uploading sequence generation code** — only `.seq` files are rendered (POS-43).
 - **k-space lines for non-Cartesian or blipped readouts** — `ky`/`kz` count gradient area that ends before the first ADC's centre in each repetition, so they suit Cartesian phase/partition encoding; a gradient played during the ADC is not counted, and later ADCs in the same repetition are not addressable by k-space line (use loop indices or an element ID).
 - **Narrow-screen layouts** — below 900 px only the recipe pane is hidden; the tab and bottom-sheet layouts are not built.
 - **Measure tool, phase-encode ladder overlay, URL-hash view state, drag-to-composer and `[[` autocomplete.** The `@` source replaces `[[`, because DSH trigger characters are only `/` and `@`.

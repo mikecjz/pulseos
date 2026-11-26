@@ -12,6 +12,8 @@
 | `recipe(session, rev?)` | Recipe source of a revision, or of the next build. Before the first build this is the default bundled recipe. |
 | `model(hash)` / `modelOf(session, revision)` | Load a stored model. `modelOf` rebuilds it from the recorded recipe and parameters when the store no longer has it, for example after moving machines. |
 | `seqPath(revision)` | Path of the revision's `.seq` file. |
+| `templates()` | The template catalogue (`templates.json` in `recipeDirectory`): `gre2d` and pypulseq's example sequences. Build one with `build(session, { bundled: name })`. |
+| `readSeq(bytes, fileName, signal?)` | Render a `.seq` file as a model in the same confined runner. Nothing is recorded in a session. |
 
 ### Session records
 
@@ -44,7 +46,7 @@ If the kernel's Landlock ABI is older than 4, the build fails with kind `sandbox
 | Key | Default | Meaning |
 |---|---|---|
 | `python` | `python/.venv/bin/python` in this repository | Interpreter with `pulseos-seq` installed. |
-| `recipeDirectory` | `python/pulseos_seq/recipes` | Bundled recipes. |
+| `recipeDirectory` | `python/pulseos_seq/recipes` | Bundled recipes and the template catalogue `templates.json`. |
 | `dataDir` | `.pulseos-data` | Model store (`models/<hex>.json`, `seq/<hex>.seq`). |
 | `timeoutMs` | `120000` | Build deadline. |
 | `graceMs` | `2000` | Terminate-to-kill grace period. |

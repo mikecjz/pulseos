@@ -24,6 +24,18 @@ def build(b, p):                                     # b: SeqBuilder, p: resolve
 - **Renames** are declared: `b.block("rf_excite", formerly="excitation", ...)`. References to `excitation` then resolve to `rf_excite`. An undeclared rename is a removed role plus an added role.
 - `pulseos_seq/recipes/gre2d.py` is the bundled 2D spoiled GRE.
 
+## Templates and adopted sequences
+
+`pulseos_seq/recipes/templates.json` lists the templates the viewer offers: `gre2d` first, then `pypulseq_*` recipes vendored from pypulseq's example scripts (`write_gre.py`, `write_epi.py`, `write_tse.py`, `write_mprage.py`, ...; MIT, see `recipes/LICENSE-pypulseq`). `python/tools/vendor_pypulseq_examples.py <pypulseq checkout>` regenerates them: it keeps the example's `main()`, removes plotting, the test report and `.seq` writing, swaps standard-library imports that recipes may not use for their `pulseos_seq` re-exports (`copy`, `SimpleNamespace`, `warn`), and appends `SEQUENCE`, an empty `PARAMS` and `build(b, p): b.adopt(main())`.
+
+`b.adopt(seq)` takes a complete pypulseq `Sequence` built elsewhere and records its blocks with roles derived from their contents (`pulseos_seq.adopt`):
+
+- base name from the events: the RF pulse's `use` (`excitation`, `refocusing`, `inversion`, ...), else `readout` for an ADC, else `grad_<axes>` (`grad_xyz`), else `trigger` or `delay`;
+- blocks with the same base name but different event channels, kinds or durations are separate roles, numbered by first appearance (`grad_xyz_2`); amplitudes may differ, so phase-encode steps and radial spokes stay one role;
+- loop `rep` counts repetitions, each starting at an excitation (or, without excitations, at the first RF role); a role that occurs more than once in one repetition also gets the inner loop `n` (`epi:readout.adc@rep=1,n=12`). Inner loops are marked `"inner": true` in `loops` and do not start a new repetition.
+
+Adopted blocks have no recipe source spans, and `adopt` must be the only way blocks are added. `read_sequence(path, name, profile)` uses the same derivation to render a `.seq` file: the model's `seq` is the file's `Name` definition (else the file name), `recipe.file` is the file name, and `params` and `markers` are empty.
+
 Recipe source is checked before it runs (`pulseos_seq.recipe.check_source`): imports are limited to `pulseos_seq`, `pypulseq`, `numpy` and `math`; dunder attributes and `open`/`eval`/`exec`/`getattr`-style builtins are rejected; the module runs with a reduced builtins table. This is defence in depth: the DSH sequence service runs each build in a separate, confined process.
 
 ## Element IDs
@@ -47,7 +59,7 @@ Units: time s, gradients mT/m, RF magnitude uT, phase rad, flip angle deg.
 |---|---|
 | `seq`, `recipe.hash`, `pypulseqVersion`, `profile` | identity of the build inputs |
 | `params` | name → `{id, value, default, unit, description, min, max, integer, fingerprint}` |
-| `loops` | loop names and sizes, outermost first |
+| `loops` | loop names and sizes, outermost first; `inner: true` marks a loop within one repetition |
 | `roles` | `{role, id, events[{name, channel, id, fingerprint, instances}], sourceSpan{startLine, endLine}, formerly, instances, fingerprint}` |
 | `blocks` | `{id, index, role, loop, t0, duration, fingerprint}` in time order |
 | `events` | `{id, block, role, name, channel, loop, t0, fingerprint, kind, delay, duration, ...}`; `kind` is `rf` (`shape`, `peak`, `flipAngle`, `freqOffset`, `phaseOffset`), `trap` (`amplitude`, `rise`, `flat`, `fall`, `area`), `grad` (`shape`, `peak`, `area`) or `adc` (`numSamples`, `dwell`, `phaseOffset`) |
@@ -66,7 +78,7 @@ Units: time s, gradients mT/m, RF magnitude uT, phase rad, flip angle deg.
  "profile": {"id": "generic", "directory": "/abs/profiles/scanner"}, "seqPath": "/abs/out.seq"}
 ```
 
-`{"recipe": {"bundled": "gre2d"}}` selects a bundled recipe. The result is `{"ok": true, "model": {...}}` or `{"ok": false, "error": {"kind", "message", "line", "traceback"}}`, where `kind` is `check`, `params`, `build`, `runtime`, `profile` or `io`. A recipe failure exits 0; a malformed request exits 2.
+`{"recipe": {"bundled": "gre2d"}}` selects a bundled recipe. `{"seqFile": {"path": "/abs/upload.seq", "name": "my.seq"}}` instead of `recipe` reads a `.seq` file (after confinement) and returns its model. The result is `{"ok": true, "model": {...}}` or `{"ok": false, "error": {"kind", "message", "line", "traceback"}}`, where `kind` is `check`, `params`, `build`, `runtime`, `read`, `profile` or `io`. A recipe failure exits 0; a malformed request exits 2.
 
 ## Tests
 
