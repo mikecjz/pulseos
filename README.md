@@ -60,6 +60,8 @@ In the Web UI, the sequence viewer opens on the right as soon as a session exist
 
 The launcher runs the DSH CLI from `dsh/` source and passes `apps/pulseos/cordis.patch.yml` as `--patch`. `DSH_HOME` defaults to `.dsh-home/` in this checkout, so development profiles and credentials stay out of `~/.dsh`; export `DSH_HOME` to override. A model call needs `DEEPSEEK_API_KEY` or a key saved on the Web Models page.
 
+Team secrets such as the HTTPS proxy for model APIs live in the Infisical project `pulseos`. Pull them into a git-ignored `.env` with `pnpm run secrets:pull`, or run `infisical run -- pnpm run web`; the launcher loads `.env` (your shell wins) and, when `HTTPS_PROXY` is set, starts DSH with `NODE_USE_ENV_PROXY=1`. Setup for teammates: [docs/secrets.md](docs/secrets.md).
+
 ## Checks
 
 ```sh

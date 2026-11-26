@@ -16,6 +16,7 @@
     "smoke:boot": "node scripts/smoke-boot.mjs",
     "dsh": "node scripts/dsh.mjs",
     "web": "node scripts/dsh.mjs web",
+    "secrets:pull": "infisical export --env=dev --format=dotenv --output-file=.env",
     "build": "pnpm --filter @pulseos/seq-viewer --filter @pulseos/brand run bundle"
   },
   "devDependencies": {

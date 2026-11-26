@@ -5,10 +5,13 @@
  * The CLI runs with dsh/ as working directory so tsx resolves @deepseek-ai/*
  * imports, including those in PulseOS plugin source, through dsh/tsconfig.json.
  * DSH_HOME defaults to .dsh-home/ in this repository so development profiles
- * stay out of the user's ~/.dsh.
+ * stay out of the user's ~/.dsh. Team secrets in a git-ignored .env at the
+ * repository root are loaded (the shell wins), and an HTTPS_PROXY turns on
+ * Node's env proxy support; see scripts/env.mjs and docs/secrets.md.
  */
 import { spawn } from 'node:child_process'
 import { existsSync } from 'node:fs'
+import { launchEnv, readEnvFile } from './env.mjs'
 import { appPatch, defaultDshHome, dshRoot, repoRoot } from './paths.mjs'
 
 const [profile, ...rest] = process.argv.slice(2)
@@ -26,7 +29,7 @@ for (const [pkg, label] of [['seq/viewer', 'sequence viewer'], ['app/brand', 'br
 const child = spawn(process.execPath, ['--import', 'tsx/esm', 'apps/cli/src/bin.ts', profile, '--patch', appPatch, ...rest], {
   cwd: dshRoot,
   stdio: 'inherit',
-  env: { DSH_HOME: defaultDshHome, ...process.env },
+  env: launchEnv(process.env, readEnvFile(`${repoRoot}.env`), { DSH_HOME: defaultDshHome }),
 })
 for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => child.kill(signal))
 child.on('exit', (code, signal) => process.exit(code ?? (signal ? 1 : 0)))
