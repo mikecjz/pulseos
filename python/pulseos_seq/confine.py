@@ -1,13 +1,20 @@
-"""Self-confinement of the build process with Linux Landlock, applied before recipe code runs.
+"""Self-confinement of the build process, applied before recipe code runs.
 
-After :func:`confine` returns, this process (and anything it spawns) can:
+After :func:`confine` returns, this process can:
 
-- read and execute only below the Python installation directories and the given extra paths,
+- read and execute only below the Python installation directories and the given extra paths
+  (on macOS also the system library directories, which the dynamic loader needs),
 - write only below the given writable directory (plus ``/dev/null``),
-- not connect or bind TCP sockets (Landlock ABI >= 4).
+- not connect or bind TCP sockets.
 
-The restriction cannot be lifted by the process. It needs Linux with Landlock ABI >= 4; on anything
-else :func:`confine` raises :class:`ConfinementUnavailable` so the caller fails closed.
+Two backends implement this:
+
+- **Linux**: Landlock, which needs ABI >= 4 for the network rules.
+- **macOS**: Seatbelt (``sandbox_init``), the kernel sandbox behind App Sandbox. It also blocks
+  UDP and spawning other programs.
+
+The restriction cannot be lifted by the process. Where neither backend is available :func:`confine`
+raises :class:`ConfinementUnavailable` so the caller fails closed.
 """
 
 from __future__ import annotations
@@ -17,6 +24,7 @@ import os
 import site
 import sys
 import sysconfig
+from typing import Any
 
 SYS_LANDLOCK_CREATE_RULESET = 444
 SYS_LANDLOCK_ADD_RULE = 445
@@ -39,7 +47,7 @@ MINIMUM_ABI = 4
 
 
 class ConfinementUnavailable(RuntimeError):
-    """Landlock with network rules is not available, so the build must not run."""
+    """No usable sandbox backend on this host, so the build must not run."""
 
 
 class _RulesetAttr(ctypes.Structure):
@@ -80,12 +88,27 @@ def _check(result: int, what: str) -> None:
         raise ConfinementUnavailable(f"{what} failed: {os.strerror(error)}")
 
 
-def confine(writable: str, readable: list[str] | None = None) -> int:
-    """Restrict this process; returns the Landlock ABI version used."""
+def available() -> bool:
+    """Whether :func:`confine` can confine this process on this host."""
+    if sys.platform == "darwin":
+        return _sandbox_init() is not None
+    return abi_version() >= MINIMUM_ABI
+
+
+def confine(writable: str, readable: list[str] | None = None) -> dict[str, object]:
+    """Restrict this process; returns a description of the confinement for the build model."""
+    if sys.platform == "darwin":
+        _confine_seatbelt(writable, readable or [])
+        return {"mechanism": "seatbelt"}
+    return {"mechanism": "landlock", "landlockAbi": _confine_landlock(writable, readable)}
+
+
+def _confine_landlock(writable: str, readable: list[str] | None) -> int:
     abi = abi_version()
     if abi < MINIMUM_ABI:
         raise ConfinementUnavailable(
-            f"Landlock ABI {abi} is too old or unavailable; network confinement needs ABI >= {MINIMUM_ABI}")
+            f"Landlock ABI {abi} is too old or unavailable; network confinement needs ABI >= {MINIMUM_ABI}"
+            + ("" if sys.platform == "linux" else f" (no sandbox backend for platform {sys.platform!r})"))
     libc = _libc()
     handled_fs = FS_ABI1_ALL | FS_REFER | FS_TRUNCATE
     attr = _RulesetAttr(handled_fs, NET_BIND_TCP | NET_CONNECT_TCP)
@@ -112,3 +135,59 @@ def confine(writable: str, readable: list[str] | None = None) -> int:
     finally:
         os.close(ruleset)
     return abi
+
+
+# macOS Seatbelt. Directories the dynamic loader and libSystem read from; the dyld shared cache lives
+# below /System (or a cryptex mounted below /System/Volumes/Preboot), which /System covers.
+_DARWIN_SYSTEM_READ = ["/System", "/usr/lib", "/usr/share", "/private/var/db/dyld", "/Library/Apple/System"]
+_DARWIN_DEVICES = ["/dev/null", "/dev/zero", "/dev/random", "/dev/urandom"]
+
+
+def _sandbox_init() -> Any:
+    """``sandbox_init`` from libSystem, or None when it is missing."""
+    try:
+        libsystem = ctypes.CDLL("/usr/lib/libSystem.B.dylib", use_errno=True)
+        function = libsystem.sandbox_init
+    except (OSError, AttributeError):
+        return None
+    function.argtypes = [ctypes.c_char_p, ctypes.c_uint64, ctypes.POINTER(ctypes.c_char_p)]
+    function.restype = ctypes.c_int
+    return function
+
+
+def _sbpl_string(path: str) -> str:
+    return '"' + path.replace("\\", "\\\\").replace('"', '\\"') + '"'
+
+
+def seatbelt_profile(writable: str, readable: list[str]) -> str:
+    """The Seatbelt (SBPL) profile :func:`confine` applies on macOS."""
+    read_roots = python_read_roots() + [os.path.realpath(p) for p in readable]
+    system = [p for p in _DARWIN_SYSTEM_READ if os.path.exists(p)]
+    read = " ".join(f"(subpath {_sbpl_string(p)})" for p in read_roots + system)
+    devices = " ".join(f"(literal {_sbpl_string(p)})" for p in _DARWIN_DEVICES)
+    write = f"(subpath {_sbpl_string(os.path.realpath(writable))})"
+    return "\n".join([
+        "(version 1)",
+        "(deny default)",
+        # Paths are checked after symlink resolution; stat()/realpath() of any path stays allowed,
+        # as with Landlock, which does not mediate metadata.
+        "(allow file-read-metadata)",
+        f"(allow file-read* {read})",
+        f"(allow file-map-executable {read})",
+        f"(allow file-read* {devices})",
+        "(allow file-write-data (literal \"/dev/null\"))",
+        f"(allow file-read* file-write* {write})",
+        "(allow sysctl-read)",
+        "(allow process-info* (target self))",
+        "(allow signal (target self))",
+    ]) + "\n"
+
+
+def _confine_seatbelt(writable: str, readable: list[str]) -> None:
+    sandbox_init = _sandbox_init()
+    if sandbox_init is None:
+        raise ConfinementUnavailable("sandbox_init is not available in libSystem")
+    error = ctypes.c_char_p()
+    if sandbox_init(seatbelt_profile(writable, readable).encode(), 0, ctypes.byref(error)) != 0:
+        message = error.value.decode(errors="replace") if error.value else "unknown error"
+        raise ConfinementUnavailable(f"sandbox_init failed: {message}")

@@ -11,8 +11,8 @@ Request::
 
 Result: ``{"ok": true, "model": {...}}`` or ``{"ok": false, "error": {kind, message, line, traceback}}``.
 A recipe failure is a normal result (exit status 0); a malformed request exits with status 2.
-With ``confine``, the recipe and profile are read first, then the process confines itself with
-Landlock before any recipe code runs; if confinement is unavailable the build fails (``kind``
+With ``confine``, the recipe and profile are read first, then the process confines itself (Landlock
+on Linux, Seatbelt on macOS) before any recipe code runs; if confinement is unavailable the build fails (``kind``
 ``sandbox``) instead of running unconfined.
 """
 
@@ -51,7 +51,7 @@ def handle(request: dict[str, Any]) -> dict[str, Any]:
         confinement = request.get("confine")
         if confinement is not None:
             try:
-                abi = confine(str(confinement["writable"]))
+                confined = confine(str(confinement["writable"]))
             except (ConfinementUnavailable, KeyError, TypeError, OSError) as error:
                 return {"ok": False, "error": {"kind": "sandbox", "message": f"cannot confine the build: {error}",
                                                "line": None, "traceback": None}}
@@ -62,7 +62,7 @@ def handle(request: dict[str, Any]) -> dict[str, Any]:
             model = build_sequence(recipe, profile, request.get("params"), request.get("seqPath"),
                                    request.get("baseParams"))
         model["warnings"] = sorted({str(w.message) for w in caught})
-        model["confinement"] = {"landlockAbi": abi} if confinement is not None else None
+        model["confinement"] = confined if confinement is not None else None
         model["log"] = captured.getvalue()[-20000:]
         return {"ok": True, "model": model}
     except RecipeError as error:

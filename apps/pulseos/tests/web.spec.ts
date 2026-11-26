@@ -19,7 +19,8 @@ import { startScriptedLlm, toolResults, type ScriptedLlm } from './scripted-llm.
 
 const repo = fileURLToPath(new URL('../../../', import.meta.url))
 const executablePath = findChromium()
-const landlockAbi = Number(spawnSync(join(repo, 'python/.venv/bin/python'), ['-c', 'from pulseos_seq.confine import abi_version; print(abi_version())'], { encoding: 'utf8' }).stdout.trim() || 0)
+/** Whether this host can confine builds (Landlock ABI >= 4 on Linux, Seatbelt on macOS; CI kernels may lack Landlock). */
+const confine = spawnSync(join(repo, 'python/.venv/bin/python'), ['-c', 'from pulseos_seq.confine import available; print(int(available()))'], { encoding: 'utf8' }).stdout.trim() === '1'
 
 describe.skipIf(executablePath === undefined)('sequence viewer in dsh web', () => {
   let llm: ScriptedLlm
@@ -45,7 +46,7 @@ describe.skipIf(executablePath === undefined)('sequence viewer in dsh web', () =
     const overlay = join(scratch, 'test.patch.yml')
     // documentsDirectory: the default Workspace otherwise depends on the host's Documents lookup,
     // which fails on CI runners and leaves the start page without a composer.
-    writeFileSync(overlay, `- id: pulseos-seq-service\n  config:\n    dataDir: ${JSON.stringify(join(scratch, 'data'))}\n    confine: ${landlockAbi >= 4}\n`
+    writeFileSync(overlay, `- id: pulseos-seq-service\n  config:\n    dataDir: ${JSON.stringify(join(scratch, 'data'))}\n    confine: ${confine}\n`
       + `- id: workspace-controller\n  config:\n    documentsDirectory: ${JSON.stringify(join(scratch, 'Documents'))}\n`)
     child = spawn(process.execPath, [join(repo, 'scripts/dsh.mjs'), 'web', '--patch', overlay, '--no-open', '--host', '127.0.0.1', '--port', '0'], {
       env: { ...process.env, DSH_HOME: join(scratch, 'home'), DEEPSEEK_BASE_URL: llm.url, DEEPSEEK_API_KEY: 'mock-key' },

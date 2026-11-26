@@ -65,3 +65,15 @@ jobs:
           cache-dependency-glob: python/uv.lock
       - run: uv sync --project python --locked
       - run: uv run --project python pytest python/tests
+
+  python-macos:
+    # Exercises the Seatbelt confinement backend, which Linux runners cannot.
+    runs-on: macos-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          cache-dependency-glob: python/uv.lock
+      - run: uv sync --project python --locked
+      - run: uv run --project python pytest python/tests

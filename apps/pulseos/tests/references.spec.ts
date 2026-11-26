@@ -13,7 +13,8 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { startScriptedLlm, type ScriptStep } from './scripted-llm.ts'
 
 const repo = fileURLToPath(new URL('../../../', import.meta.url))
-const landlockAbi = Number(spawnSync(join(repo, 'python/.venv/bin/python'), ['-c', 'from pulseos_seq.confine import abi_version; print(abi_version())'], { encoding: 'utf8' }).stdout.trim() || 0)
+/** Whether this host can confine builds (Landlock ABI >= 4 on Linux, Seatbelt on macOS; CI kernels may lack Landlock). */
+const confine = spawnSync(join(repo, 'python/.venv/bin/python'), ['-c', 'from pulseos_seq.confine import available; print(int(available()))'], { encoding: 'utf8' }).stdout.trim() === '1'
 const PROMPT = 'Why is [[gre2d:excitation.rf|r1]] different from [[gre2d:excitation.rf]]? Also check [[gre2d:readout.adc@slice=0,line=40|r1]] and [[gre2d:bogus]].'
 
 async function runHeadless(scratch: string, overlay: string, script: ScriptStep[], args: string[]) {
@@ -46,7 +47,7 @@ describe('[[id]] references in a resumed session', () => {
   beforeAll(async () => {
     scratch = await mkdtemp(join(tmpdir(), 'pulseos-refs-'))
     const overlay = join(scratch, 'test.patch.yml')
-    await writeFile(overlay, `- id: pulseos-seq-service\n  config:\n    dataDir: ${JSON.stringify(join(scratch, 'data'))}\n    confine: ${landlockAbi >= 4}\n`)
+    await writeFile(overlay, `- id: pulseos-seq-service\n  config:\n    dataDir: ${JSON.stringify(join(scratch, 'data'))}\n    confine: ${confine}\n`)
     first = await runHeadless(scratch, overlay, [
       { tool: 'seq_build', input: { cause: 'initial build' } },
       { tool: 'seq_set_params', input: { params: [{ name: 'flip_angle', value: 30 }, { name: 'Ny', value: 32 }], cause: 'flip 30, Ny 32' } },
