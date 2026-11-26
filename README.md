@@ -58,6 +58,8 @@ pnpm run dsh <profile> ... # any DSH profile with the overlay, e.g. `pnpm run ds
 
 In the Web UI, the sequence viewer opens on the right as soon as a session exists, showing "No sequence built yet" until something is built. Ask the model to build the sequence (for example "Build the 2D GRE"), or click "Build gre2d with defaults". If you close the viewer it stays closed for that session; reopen it from the right sidebar's "+" as "Sequence viewer". Click an element to inspect it, press `R` or "Reference in chat" to put it into your message, or type `@` and pick from "Sequence". Without a model key, the viewer's empty state can still build the default recipe.
 
+`web` without `--port` serves on the first free port from 3080 upward (3081, 3082… when another checkout on a shared server already holds 3080) and prints the chosen URL; open the `dsh web:` link, which carries the login token. An explicit `--port <port>` is used as given and fails if that port is taken.
+
 The launcher runs the DSH CLI from `dsh/` source and passes `apps/pulseos/cordis.patch.yml` as `--patch`. `DSH_HOME` defaults to `.dsh-home/` in this checkout, so development profiles and credentials stay out of `~/.dsh`; export `DSH_HOME` to override. A model call needs `DEEPSEEK_API_KEY` or a key saved on the Web Models page.
 
 ## Checks
