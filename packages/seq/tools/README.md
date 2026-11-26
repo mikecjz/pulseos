@@ -5,7 +5,7 @@ Model-facing tools for the session's pulse sequence. Every tool acts on the call
 | Tool | Does |
 |---|---|
 | `seq_status` | Current revision, parameters (with IDs, units and SI values), roles with their event IDs, markers and a timing summary |
-| `seq_build` | Build a bundled recipe (`gre2d`) as a new revision, with optional parameter overrides |
+| `seq_build` | Build a bundled recipe (`gre2d` or a `pypulseq_*` example template; the description lists the catalogue) as a new revision, with optional parameter overrides |
 | `seq_set_params` | Change parameters (SI units) and rebuild |
 | `seq_get_element` | Describe one element at a revision: timing, amplitudes, how it varies across instances, timing errors and the recipe lines that emit it |
 | `seq_get_recipe` | Recipe source with line numbers |
@@ -60,5 +60,5 @@ Results are appended to the conversation, so earlier tokens are never replaced.
 
 ## Known Limitations and Deferred Work
 
-- **One bundled recipe** — only `gre2d` exists; `seq_build` accepts any bundled name.
+- **Parameters only on gre2d** — the `pypulseq_*` templates have no declared parameters; `seq_set_params` does not apply to them and changes go through `seq_edit_recipe`.
 - **No direct `.seq` download tool** — the file is stored with each revision (`ctx.pulseSeq.seqPath`); the viewer exposes it in M4.

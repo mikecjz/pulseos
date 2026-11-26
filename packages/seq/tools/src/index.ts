@@ -107,7 +107,7 @@ export function apply(ctx: Context): void {
 
   ctx.tools.register(defineTool({
     name: 'seq_build',
-    description: 'Build a sequence from a bundled recipe as a new revision: the first build of a session, or starting over. Bundled recipes: gre2d (2D spoiled gradient echo).',
+    description: `Build a sequence from a bundled recipe as a new revision: the first build of a session, or starting over. Bundled recipes: ${seq.templates().map(t => `${t.name} (${t.title})`).join(', ')}. Recipes named pypulseq_* are pypulseq's example sequences: they have no parameters, and their element roles are derived from block contents (IDs like epi:readout.adc@rep=0,n=5, where rep counts excitations and n counts repeats of a role within one repetition); change them with seq_edit_recipe.`,
     parameters: {
       recipe: { type: 'string', description: 'Bundled recipe name; default gre2d.' },
       params: { type: 'array', description: 'Optional parameter overrides in SI units.', items: { type: 'object', additionalProperties: false, properties: { name: { type: 'string', required: true }, value: { type: 'number', required: true } } } },

@@ -1,6 +1,7 @@
 /**
  * Host face of the sequence viewer: read-only HTTP routes the browser viewer loads revisions,
- * models, recipes and `.seq` files from, plus one build route for the viewer's empty state.
+ * models, recipes, templates and `.seq` files from, a build route for the default recipe and the
+ * templates, and a route that renders an uploaded `.seq` file without recording it.
  * Routes act on live sessions only (`ctx.sessions.get`); the browser reaches them through the
  * authenticated DSH connection.
  * @module @pulseos/seq-viewer
@@ -9,7 +10,9 @@ import type { Context } from '@deepseek-ai/cordis'
 import type { Session } from '@deepseek-ai/dsh-session'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type {} from '@pulseos/seq-service'
-import { BUILD_PATH, MODEL_PATH, RECIPE_PATH, SEQ_PATH, STATE_PATH, type ViewerState } from './routes.ts'
+import {
+  BUILD_PATH, MAX_SEQ_FILE_BYTES, MODEL_PATH, READ_PATH, RECIPE_PATH, SEQ_PATH, STATE_PATH, TEMPLATES_PATH, type ReadResult, type ViewerState,
+} from './routes.ts'
 
 export * from './routes.ts'
 
@@ -110,8 +113,29 @@ export function apply(ctx: Context): void {
   route(BUILD_PATH, async (url) => {
     const session = sessionOf(url)
     if (session instanceof Response) return session
-    if (seq.current(session) !== undefined) return problem(409, 'this session already has a sequence; change it through chat')
-    const outcome = await seq.build(session, { cause: 'initial build from the viewer', author: 'user' })
+    const templateName = url.searchParams.get('template')
+    let outcome
+    if (templateName === null) {
+      if (seq.current(session) !== undefined) return problem(409, 'this session already has a sequence; change it through chat')
+      outcome = await seq.build(session, { cause: 'initial build from the viewer', author: 'user' })
+    } else {
+      // A template starts the session over as a new revision; earlier revisions stay in the history.
+      const template = seq.templates().find(t => t.name === templateName)
+      if (template === undefined) return problem(404, `there is no template "${templateName}"`)
+      outcome = await seq.build(session, { cause: `template: ${template.title}`, author: 'user', bundled: template.name })
+    }
     return outcome.ok ? json({ ok: true, rev: outcome.revision.rev }) : json({ ok: false, error: outcome.error }, 422)
+  }, ['POST'])
+
+  route(TEMPLATES_PATH, async () => json(seq.templates()))
+
+  route(READ_PATH, async (url, request) => {
+    const bytes = new Uint8Array(await request.arrayBuffer())
+    if (bytes.byteLength === 0) return problem(400, 'the request body must be a .seq file')
+    if (bytes.byteLength > MAX_SEQ_FILE_BYTES) return problem(413, `the file is larger than ${MAX_SEQ_FILE_BYTES >> 20} MiB`)
+    const fileName = (url.searchParams.get('name') ?? 'upload.seq').replace(/^.*[\\/]/, '').slice(0, 200) || 'upload.seq'
+    const outcome = await seq.readSeq(bytes, fileName, request.signal)
+    const body: ReadResult = outcome.ok ? { ok: true, name: fileName, model: outcome.model } : { ok: false, error: outcome.error }
+    return json(body, outcome.ok ? 200 : 422)
   }, ['POST'])
 }

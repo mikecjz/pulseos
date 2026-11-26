@@ -1,5 +1,5 @@
 /** Pure geometry over a sequence model: per-channel event index, waveform points, ticks. */
-import type { BlockElement, Channel, SequenceEvent, SequenceModel } from '@pulseos/seq-protocol'
+import { repetitionLoop, type BlockElement, type Channel, type SequenceEvent, type SequenceModel } from '@pulseos/seq-protocol'
 
 export const CHANNELS: readonly Channel[] = ['rf', 'gz', 'gy', 'gx', 'adc']
 export const GRADIENTS: readonly Channel[] = ['gz', 'gy', 'gx']
@@ -7,7 +7,7 @@ export const GRADIENTS: readonly Channel[] = ['gz', 'gy', 'gx']
 /** Time window in seconds. */
 export interface Viewport { t0: number; t1: number }
 
-/** One repetition: the blocks sharing one combination of loop indices. */
+/** One repetition: the blocks sharing one combination of loop indices (inner loops excluded). */
 export interface Repetition { start: number; end: number; loop: Record<string, number>; label: string }
 
 function upperBound<T>(items: readonly T[], value: number, key: (item: T) => number): number {
@@ -55,7 +55,7 @@ export class SequenceIndex {
     }
     this.gradMax = grad
     this.rfMax = rf
-    this.repetitions = repetitions(this.blocks)
+    this.repetitions = repetitions(model, this.blocks)
   }
 
   /**
@@ -116,15 +116,16 @@ export class SequenceIndex {
   }
 }
 
-function repetitions(blocks: readonly BlockElement[]): Repetition[] {
+function repetitions(model: SequenceModel, blocks: readonly BlockElement[]): Repetition[] {
   const out: Repetition[] = []
   let key = ''
   for (const block of blocks) {
-    const k = JSON.stringify(block.loop)
+    const loop = repetitionLoop(model, block.loop)
+    const k = JSON.stringify(loop)
     if (k !== key || out.length === 0) {
       key = k
-      const label = Object.entries(block.loop).map(([n, i]) => `${n}=${i}`).join(',')
-      out.push({ start: block.t0, end: block.t0 + block.duration, loop: block.loop, label })
+      const label = Object.entries(loop).map(([n, i]) => `${n}=${i}`).join(',')
+      out.push({ start: block.t0, end: block.t0 + block.duration, loop, label })
     } else {
       out.at(-1)!.end = block.t0 + block.duration
     }

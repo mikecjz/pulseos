@@ -16,12 +16,15 @@ from __future__ import annotations
 
 import ast
 import builtins
+import re
 import traceback
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from .builder import BuildError, Param, SeqBuilder, resolve_params
+import pypulseq as pp
+
+from .builder import BuildError, Param, Params, SeqBuilder, resolve_params
 from .canonical import digest_text
 from .ids import check_name, ElementIdError
 from .model import build_model
@@ -40,7 +43,7 @@ class RecipeError(Exception):
 
     def __init__(self, kind: str, message: str, line: int | None = None, trace: str | None = None):
         super().__init__(message)
-        self.kind = kind  # check | params | build | runtime
+        self.kind = kind  # check | params | build | runtime | read
         self.line = line
         self.trace = trace
 
@@ -158,6 +161,45 @@ def build_sequence(recipe: Recipe, profile: ScannerProfile, params: dict[str, An
     if seq_path is not None:
         b.seq.write(str(seq_path))
     return model
+
+
+def _sequence_name(seq: pp.Sequence, filename: str) -> str:
+    """A valid sequence name for a ``.seq`` file: its ``Name`` definition, else the file stem."""
+    for candidate in (seq.definitions.get("Name"), Path(filename).stem):
+        if isinstance(candidate, (list, tuple)):
+            candidate = " ".join(str(c) for c in candidate)
+        text = re.sub(r"[^A-Za-z0-9_]+", "_", str(candidate or "")).strip("_")
+        if text:
+            return text if text[0].isalpha() else f"seq_{text}"
+    return "uploaded"
+
+
+def read_sequence(path: str | Path, filename: str, profile: ScannerProfile) -> dict[str, Any]:
+    """Read a ``.seq`` file and return its sequence model, with roles derived from block contents.
+
+    The file is only rendered: it has no recipe and no parameters. ``recipe.hash`` is the file's
+    digest and ``recipe.file`` its name.
+    """
+    seq = pp.Sequence(system=to_opts(profile))
+    try:
+        seq.read(str(path))
+    except Exception as error:  # pypulseq raises plain exceptions for malformed files
+        raise RecipeError("read", f"cannot read {filename}: {type(error).__name__}: {error}",
+                          trace=traceback.format_exc()) from error
+    if not seq.block_events:
+        raise RecipeError("read", f"{filename} has no blocks")
+    name = _sequence_name(seq, filename)
+    b = SeqBuilder(name, seq.system, Params({}), None)
+    try:
+        b.adopt(seq)
+    except Exception as error:
+        raise RecipeError("read", f"cannot render {filename}: {type(error).__name__}: {error}",
+                          trace=traceback.format_exc()) from error
+    profile_json = {"id": profile.id, "title": profile.title, "limits": vars(profile.limits)}
+    with open(path, encoding="utf-8", errors="replace") as handle:
+        file_hash = digest_text(handle.read())
+    return build_model(seq_name=name, seq=b.seq, records=b.records, declared={}, params=Params({}),
+                       profile=profile_json, recipe_hash=file_hash, recipe_file=filename)
 
 
 def bundled_recipe(name: str) -> tuple[str, str]:

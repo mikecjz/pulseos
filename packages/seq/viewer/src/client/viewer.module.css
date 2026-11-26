@@ -57,6 +57,7 @@ a.chipBox:hover, button.chipBox:hover { color: var(--text); border-color: var(--
 .trace { width: 100%; max-height: 160px; overflow: auto; margin: 4px 0 0; padding: 6px; background: var(--bg); border: 1px solid var(--line); font: 11px var(--mono); color: var(--muted); }
 .empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 24px; text-align: center; }
 .emptyTitle { font-size: 16px; font-weight: 600; }
+.emptyActions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: center; }
 .muted { color: var(--muted); }
 .faint { color: var(--faint); font-size: 11px; }
 .ok { color: var(--ok); }

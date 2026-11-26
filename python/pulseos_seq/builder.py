@@ -158,6 +158,7 @@ class BuilderRecords:
     blocks: list[BlockRecord] = field(default_factory=list)
     markers: list[MarkerRecord] = field(default_factory=list)
     loops: dict[str, int] = field(default_factory=dict)  # loop name -> size, in first-seen order
+    inner_loops: set[str] = field(default_factory=set)  # loops that index blocks within one repetition
     shapes: dict[str, Shape] = field(default_factory=dict)
 
 
@@ -268,6 +269,37 @@ class SeqBuilder:
         records = [self._describe(name, channel, obj, t0) for name, channel, obj in described]
         self.records.blocks.append(BlockRecord(index, role, key[1], t0, duration, records, span, formerly))
         self._t = t0 + duration
+
+    # -- whole sequences ----------------------------------------------------------------------
+    def adopt(self, seq: pp.Sequence) -> None:
+        """Use a complete pypulseq ``Sequence`` built elsewhere as this builder's sequence.
+
+        For sequences written without the builder, such as pypulseq's example scripts or a ``.seq``
+        file. Roles are derived from block contents (see :func:`pulseos_seq.adopt.derive_roles`):
+        the first excitation of each repetition starts loop ``rep``, and a role that occurs more than
+        once in one repetition also gets the inner loop ``n``. Blocks are recorded as they are; the
+        builder adds nothing to the sequence.
+        """
+        from .adopt import INNER_LOOP, REPETITION_LOOP, derive_roles
+
+        if self.records.blocks:
+            raise BuildError("adopt() must be the only way blocks are added", self._caller_line())
+        if not isinstance(seq, pp.Sequence):
+            raise BuildError(f"adopt() needs a pypulseq Sequence, got {type(seq).__name__}", self._caller_line())
+        self.seq = seq
+        self.system = seq.system
+        t = 0.0
+        for item in derive_roles(seq):
+            loop = ((REPETITION_LOOP, item.rep),) + (((INNER_LOOP, item.n),) if item.n is not None else ())
+            for name, index in loop:
+                self.records.loops[name] = max(self.records.loops.get(name, 0), index + 1)
+            if item.n is not None:
+                self.records.inner_loops.add(INNER_LOOP)
+            events = [self._describe(channel, channel, obj, t) for channel, obj in item.events]
+            duration = float(item.block.block_duration)
+            self.records.blocks.append(BlockRecord(item.index, item.role, loop, t, duration, events, None, None))
+            t += duration
+        self._t = t
 
     # -- internals ----------------------------------------------------------------------------
     def _channel(self, obj: SimpleNamespace, name: str, line: int | None) -> str | None:

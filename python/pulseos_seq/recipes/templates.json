@@ -1,0 +1,62 @@
+[
+  {
+    "name": "gre2d",
+    "title": "2D gradient echo (PulseOS)",
+    "origin": "pulseos",
+    "description": "PulseOS's own spoiled GRE recipe with named roles and parameters (FOV, matrix, TE, TR, flip angle, ...)."
+  },
+  {
+    "name": "pypulseq_gre",
+    "title": "2D gradient echo",
+    "origin": "pypulseq 1.5.0.post1 examples/scripts/write_gre.py",
+    "description": "Cartesian spoiled gradient echo (FLASH) with RF spoiling, 64 × 64."
+  },
+  {
+    "name": "pypulseq_radial_gre",
+    "title": "2D radial gradient echo",
+    "origin": "pypulseq 1.5.0.post1 examples/scripts/write_radial_gre.py",
+    "description": "Radial spoiled gradient echo with uniformly spaced spokes."
+  },
+  {
+    "name": "pypulseq_ute",
+    "title": "2D radial UTE",
+    "origin": "pypulseq 1.5.0.post1 examples/scripts/write_ute.py",
+    "description": "Ultrashort echo time with half-pulse excitation and radial centre-out readouts."
+  },
+  {
+    "name": "pypulseq_epi",
+    "title": "2D echo-planar imaging",
+    "origin": "pypulseq 1.5.0.post1 examples/scripts/write_epi.py",
+    "description": "Single-shot gradient-echo EPI, multi-slice."
+  },
+  {
+    "name": "pypulseq_epi_se",
+    "title": "2D spin-echo EPI",
+    "origin": "pypulseq 1.5.0.post1 examples/scripts/write_epi_se.py",
+    "description": "Single-shot spin-echo EPI."
+  },
+  {
+    "name": "pypulseq_epi_se_rs",
+    "title": "Spin-echo EPI, ramp sampling",
+    "origin": "pypulseq 1.5.0.post1 examples/scripts/write_epi_se_rs.py",
+    "description": "Experimental spin-echo EPI with split blips overlapping the readout and ramp sampling."
+  },
+  {
+    "name": "pypulseq_tse",
+    "title": "2D turbo spin echo",
+    "origin": "pypulseq 1.5.0.post1 examples/scripts/write_tse.py",
+    "description": "Multi-slice turbo spin echo (fast spin echo)."
+  },
+  {
+    "name": "pypulseq_haste",
+    "title": "HASTE",
+    "origin": "pypulseq 1.5.0.post1 examples/scripts/write_haste.py",
+    "description": "Single-shot half-Fourier turbo spin echo."
+  },
+  {
+    "name": "pypulseq_mprage",
+    "title": "3D MPRAGE",
+    "origin": "pypulseq 1.5.0.post1 examples/scripts/write_mprage.py",
+    "description": "Magnetisation-prepared rapid gradient echo, 3D. Large: about 6000 blocks."
+  }
+]

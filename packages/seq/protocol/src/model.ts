@@ -122,7 +122,8 @@ export interface SequenceModel {
   profile: ScannerProfileSummary
   params: Record<string, ParamElement>
   duration: number
-  loops: { name: string; size: number }[]
+  /** Loops in nesting order. An `inner` loop indexes blocks within one repetition (an EPI echo train), so it does not start a new repetition. */
+  loops: { name: string; size: number; inner?: boolean }[]
   roles: RoleElement[]
   blocks: BlockElement[]
   events: SequenceEvent[]

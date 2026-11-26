@@ -9,21 +9,24 @@ const repo = fileURLToPath(new URL('../../../../', import.meta.url))
 const python = `${repo}python/.venv/bin/python`
 
 const SCRIPT = `
-import json, warnings
+import contextlib, io, json, warnings
 warnings.simplefilter("ignore")
 from pulseos_seq.recipe import load_recipe, build_sequence, bundled_recipe
 from pulseos_seq.scanner import load_profile
 src, fn = bundled_recipe("gre2d")
+with contextlib.redirect_stdout(io.StringIO()):  # the pypulseq example prints its timing check
+    epi = build_sequence(load_recipe(*bundled_recipe("pypulseq_epi")), load_profile())
 print(json.dumps({
   "single": build_sequence(load_recipe(src, fn), load_profile(), {"Ny": 8}),
   "multi": build_sequence(load_recipe(src, fn), load_profile(), {"Ny": 4, "n_slices": 2}),
+  "epi": epi,
 }))
 `
 
 describe.skipIf(!existsSync(python))('navigation on gre2d', () => {
   const run = spawnSync(python, ['-c', SCRIPT], { cwd: `${repo}python`, encoding: 'utf8', maxBuffer: 64 << 20 })
   if (run.status !== 0) throw new Error(run.stderr)
-  const { single, multi } = JSON.parse(run.stdout) as Record<'single' | 'multi', SequenceModel>
+  const { single, multi, epi } = JSON.parse(run.stdout) as Record<'single' | 'multi' | 'epi', SequenceModel>
 
   it('numbers phase-encode lines from the k-space centre', () => {
     const reps = kspaceRepetitions(single)
@@ -67,5 +70,16 @@ describe.skipIf(!existsSync(python))('navigation on gre2d', () => {
     expect(findNavigation(single, { loop: { line: 8 } })).toEqual({ ok: false, reason: 'loop line runs 0..7, not 8' })
     expect(findNavigation(single, { element: 'gre2d:nope' })).toMatchObject({ ok: false, reason: 'gre2d:nope does not exist: no role "nope"' })
     expect(findNavigation(single, {})).toEqual({ ok: false, reason: 'give element, loop, ky or kz' })
+  })
+
+  it('keeps an echo train in one repetition: the inner loop n does not start a new one', () => {
+    const reps = kspaceRepetitions(epi)
+    expect(reps.map(r => r.loop)).toEqual([{ rep: 0 }, { rep: 1 }, { rep: 2 }])
+    expect(reps.every(r => r.adcRole === 'readout')).toBe(true)
+    const result = findNavigation(epi, { element: 'epi:readout.adc@rep=1,n=10' })
+    if (!result.ok) throw new Error(result.reason)
+    expect(result.view.t0).toBeLessThan(reps[1]!.start)
+    expect(result.view.t1).toBeGreaterThan(reps[1]!.end)
+    expect(findNavigation(epi, { loop: { rep: 2 } })).toMatchObject({ ok: true, select: 'epi:readout@rep=2,n=0' })
   })
 })

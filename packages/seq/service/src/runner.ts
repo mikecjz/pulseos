@@ -1,4 +1,7 @@
-/** One build: write the recipe into a private temporary directory and run `pulseos_seq.run` there. */
+/**
+ * One build: write the recipe (or the `.seq` file to read) into a private temporary directory and
+ * run `pulseos_seq.run` there.
+ */
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -15,13 +18,10 @@ export interface RunnerSpec {
   confine: boolean
 }
 
-/** What to build. */
-export interface RunnerInput {
-  recipeSource: string
-  params: Record<string, number>
-  baseParams: Record<string, number>
-  profile: { id: string; directory: string }
-}
+/** What to build: a recipe with parameters, or a `.seq` file to read and render. */
+export type RunnerInput =
+  | { recipeSource: string; params: Record<string, number>; baseParams: Record<string, number>; profile: { id: string; directory: string } }
+  | { seqFile: Uint8Array; fileName: string; profile: { id: string; directory: string } }
 
 export type RunnerResult =
   | { ok: true; model: SequenceModel; seqFile: Uint8Array | null }
@@ -40,15 +40,20 @@ interface RunnerReply { ok: boolean; model?: SequenceModel; error?: BuildError }
 export async function runBuild(ctx: Context, spec: RunnerSpec, input: RunnerInput, signal?: AbortSignal): Promise<RunnerResult> {
   const directory = await mkdtemp(join(tmpdir(), 'pulseos-build-'))
   try {
-    const recipePath = join(directory, 'recipe.py')
     const seqPath = join(directory, 'out.seq')
-    await writeFile(recipePath, input.recipeSource, { mode: 0o600, flag: 'wx' })
+    let task: Record<string, unknown>
+    if ('seqFile' in input) {
+      const uploadPath = join(directory, 'upload.seq')
+      await writeFile(uploadPath, input.seqFile, { mode: 0o600, flag: 'wx' })
+      task = { seqFile: { path: uploadPath, name: input.fileName } }
+    } else {
+      const recipePath = join(directory, 'recipe.py')
+      await writeFile(recipePath, input.recipeSource, { mode: 0o600, flag: 'wx' })
+      task = { recipe: { path: recipePath }, params: input.params, baseParams: input.baseParams, seqPath }
+    }
     const request = {
-      recipe: { path: recipePath },
-      params: input.params,
-      baseParams: input.baseParams,
+      ...task,
       profile: input.profile,
-      seqPath,
       ...(spec.confine ? { confine: { writable: directory } } : {}),
     }
     const deadline = AbortSignal.timeout(spec.timeoutMs)

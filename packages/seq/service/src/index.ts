@@ -8,6 +8,7 @@
  * of the latest revision; a failed build changes neither.
  * @module @pulseos/seq-service
  */
+import { readFileSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import { isAbsolute, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -23,6 +24,7 @@ import type {} from '@pulseos/scanner-profile'
 import {
   BUILD_FAILED_RECORD, isName, paramChanges, RECIPE_RECORD, REVISION_RECORD, roleDiff,
   type Author, type BuildError, type BuildFailedRecord, type RecipeRecord, type RevisionKind, type RevisionRecord, type SequenceModel,
+  type SequenceTemplate,
 } from '@pulseos/seq-protocol'
 import { runBuild } from './runner.ts'
 import { ModelStore, ModelUnavailableError, sha256 } from './store.ts'
@@ -72,6 +74,9 @@ export interface BuildRequest {
   restore?: number
 }
 
+/** Outcome of reading a `.seq` file: its model, or why it could not be read. */
+export type ReadOutcome = { ok: true; model: SequenceModel } | { ok: false; error: BuildError }
+
 export type BuildOutcome =
   | { ok: true; revision: RevisionRecord; model: SequenceModel }
   | { ok: false; error: BuildError; failure: BuildFailedRecord }
@@ -80,7 +85,7 @@ export type BuildOutcome =
 export interface Config {
   /** Python interpreter of the `pulseos-seq` environment. */
   python: string
-  /** Directory holding the bundled recipes (`<name>.py`). */
+  /** Directory holding the bundled recipes (`<name>.py`) and the template catalogue `templates.json`. */
   recipeDirectory: string
   /** Directory for stored models and `.seq` files. */
   dataDir: string
@@ -117,6 +122,7 @@ export class PulseSeqService extends Service {
   })
 
   private readonly store: ModelStore
+  private catalogue: SequenceTemplate[] | undefined
   private projection: ProjectionHandle<SequenceState> | undefined
   private readonly queues = new Map<string, Promise<unknown>>()
 
@@ -185,6 +191,39 @@ export class PulseSeqService extends Service {
     const record = state.recipes[revision.recipeHash]
     if (record === undefined) throw new Error(`the session log has no recipe ${revision.recipeHash}`)
     return { source: record.source, hash: record.recipeHash, bundled: record.bundled }
+  }
+
+  /**
+   * Templates a session can start from: bundled recipes listed in `templates.json` in the recipe
+   * directory (the native gre2d recipe and pypulseq's example sequences). Build one with
+   * `build(session, { bundled: name })`.
+   * @returns the catalogue; empty when the directory has none.
+   */
+  templates(): SequenceTemplate[] {
+    if (this.catalogue === undefined) {
+      let text: string
+      try {
+        text = readFileSync(join(this.config.recipeDirectory, 'templates.json'), 'utf8')
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
+        text = '[]'
+      }
+      this.catalogue = (JSON.parse(text) as SequenceTemplate[]).filter(t => isName(t.name))
+    }
+    return this.catalogue
+  }
+
+  /**
+   * Read a `.seq` file and render it as a sequence model, with roles derived from its block
+   * contents. Nothing is recorded in a session: the result is a read-only view.
+   * @param bytes - the file contents.
+   * @param fileName - the file's name, shown in the model.
+   * @param signal - cancellation.
+   * @returns the model, or why the file could not be read.
+   */
+  async readSeq(bytes: Uint8Array, fileName: string, signal?: AbortSignal): Promise<ReadOutcome> {
+    const result = await runBuild(this.ctx, this.runnerSpec(), { seqFile: bytes, fileName, profile: this.profileInput() }, signal)
+    return result.ok ? { ok: true, model: result.model } : { ok: false, error: result.error }
   }
 
   /**
