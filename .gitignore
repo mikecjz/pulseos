@@ -10,3 +10,4 @@ coverage/
 *.tsbuildinfo
 .pulseos-data/
 test-results/
+!sims/mrzero-mcp/tests/data/*.seq

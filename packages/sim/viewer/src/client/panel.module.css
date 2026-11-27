@@ -1,0 +1,66 @@
+/* Same tokens as the sequence viewer (packages/seq/viewer/src/client/viewer.module.css), so the two tabs read as one tool. */
+.root {
+  --bg: #0d1015; --panel: #13171e; --panel2: #181d26; --line: #242b36; --line2: #2e3643;
+  --text: #e4e8ef; --muted: #8a94a6; --faint: #5b6474; --accent: #ff5cc8;
+  --chg: #fb923c; --bad: #ef4444; --ok: #34d399; --bar: #5fa8ff;
+  --mono: ui-monospace, "JetBrains Mono", "SFMono-Regular", "DejaVu Sans Mono", Menlo, monospace;
+  --sans: Inter, ui-sans-serif, system-ui, "Segoe UI", "DejaVu Sans", sans-serif;
+  --r: 6px;
+  position: relative; display: flex; flex-direction: column; height: 100%; min-height: 0;
+  background: var(--bg); color: var(--text); font: 13px/1.4 var(--sans); font-variant-numeric: tabular-nums; outline: none;
+}
+.root[data-theme="light"] {
+  --bg: #fbfcfd; --panel: #f3f5f8; --panel2: #eceff4; --line: #e1e5ec; --line2: #cfd5df;
+  --text: #18202b; --muted: #5b6474; --faint: #8a94a6; --accent: #d0219c;
+  --chg: #c2560c; --bad: #dc2626; --ok: #059669; --bar: #2563eb;
+}
+.root button { font: inherit; color: inherit; }
+.root button:focus-visible, .root select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.toolbar { display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-bottom: 1px solid var(--line); background: var(--panel); flex-wrap: wrap; }
+.chipBox { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 8px; border: 1px solid var(--line2); border-radius: var(--r); background: var(--bg); color: var(--muted); font: 12px var(--mono); }
+.select { background: transparent; color: var(--text); border: none; font: 12px var(--mono); max-width: 150px; text-overflow: ellipsis; }
+.select option { background: var(--panel); color: var(--text); }
+.segmented { display: inline-flex; border: 1px solid var(--line2); border-radius: var(--r); overflow: hidden; }
+.segmented button { height: 26px; padding: 0 9px; border: none; border-right: 1px solid var(--line2); background: var(--bg); color: var(--muted); cursor: pointer; }
+.segmented button:last-child { border-right: none; }
+.segmented button:hover { color: var(--text); background: var(--panel2); }
+.segmented button.on { color: var(--text); background: var(--panel2); box-shadow: inset 0 -2px 0 var(--accent); }
+.plain { height: 26px; padding: 0 8px; border: 1px solid var(--line2); border-radius: var(--r); background: transparent; color: var(--muted); cursor: pointer; }
+.plain:hover { color: var(--text); background: var(--panel2); }
+.primary { height: 26px; padding: 0 10px; border: 1px solid var(--text); border-radius: var(--r); background: var(--text); color: var(--bg) !important; cursor: pointer; font-weight: 600; }
+.primary:disabled { opacity: .5; cursor: default; }
+.linkButton { border: none; background: none; padding: 0 4px; color: var(--accent) !important; cursor: pointer; text-decoration: underline; }
+.spacer { flex: 1; }
+.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex: none; }
+.ok { background: var(--ok); }
+.bad { background: var(--bad); }
+.chg { color: var(--chg); }
+span.chg.dot, .dot.chg { background: var(--chg); }
+.faintDot { background: var(--faint); }
+.spinner { width: 12px; height: 12px; border: 2px solid var(--line2); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; display: inline-block; flex: none; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 3s; } }
+.progress { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-bottom: 1px solid var(--line); font: 12px var(--mono); color: var(--muted); }
+.bar { flex: 1; min-width: 60px; height: 4px; border-radius: 2px; background: var(--line); overflow: hidden; }
+.bar > span { display: block; height: 100%; background: var(--accent); transition: width .2s; }
+.bannerBad, .bannerInfo { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 6px 10px; font-size: 12px; border-bottom: 1px solid var(--line); }
+.bannerBad { background: color-mix(in srgb, var(--bad) 14%, var(--bg)); }
+.bannerInfo { background: var(--panel2); color: var(--muted); }
+.badge { padding: 0 5px; border-radius: 3px; background: var(--chg); color: #111; font: 600 10px var(--mono); text-transform: uppercase; }
+.trace { width: 100%; max-height: 120px; overflow: auto; margin: 2px 0; padding: 6px; background: var(--bg); border: 1px solid var(--line); font: 11px var(--mono); color: var(--muted); white-space: pre-wrap; }
+.empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 24px; text-align: center; }
+.emptyTitle { font-size: 16px; font-weight: 600; }
+.muted { color: var(--muted); }
+.mono { font-family: var(--mono); font-size: 12px; }
+.result { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+.canvasBox { position: relative; flex: 1; min-height: 160px; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.canvasBox canvas { display: block; }
+.overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; }
+.tooltip { position: absolute; z-index: 2; max-width: 260px; padding: 5px 8px; background: var(--panel2); border: 1px solid var(--line2); border-radius: var(--r); pointer-events: none; box-shadow: 0 4px 14px rgba(0, 0, 0, .3); font-size: 12px; }
+.tissues { margin: 0 10px; border-collapse: collapse; font-size: 12px; }
+.tissues th { text-align: left; font-weight: 500; padding: 1px 8px 1px 0; color: var(--muted); white-space: nowrap; }
+.tissues td { padding: 1px 6px; }
+.barCell { width: 100%; }
+.tissueBar { display: block; height: 6px; border-radius: 3px; background: var(--bar); min-width: 1px; }
+.footer { display: flex; flex-wrap: wrap; gap: 4px 12px; padding: 6px 10px; border-top: 1px solid var(--line); margin-top: 6px; color: var(--faint); font: 11px var(--mono); }
+.toast { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); padding: 6px 12px; border-radius: var(--r); background: var(--panel2); border: 1px solid var(--line2); font-size: 12px; box-shadow: 0 4px 14px rgba(0, 0, 0, .3); }

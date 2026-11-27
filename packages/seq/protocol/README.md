@@ -11,7 +11,7 @@ The contract shared by the Python backend, the DSH host plugins and the browser 
 
   These behave like `pulseos_seq.resolve`. `tests/protocol.spec.ts` runs both on the same gre2d models and compares the results.
 - **Session records**: `RecipeRecord`, `RevisionRecord` and `BuildFailedRecord` are stored as DSH plugin records (`plugin:pulseos/recipe`, `plugin:pulseos/revision`, `plugin:pulseos/build-failed`).
-- **Reference tokens**: `[[<element id>]]` points at the latest revision, and `[[<element id>|r<rev>]]` pins a revision. `findReferences(text)` returns every token and marks malformed IDs `valid: false`, so the UI can show them as unresolved. `formatReference` writes a token.
+- **Reference tokens**: `[[<element id>]]` points at the latest revision, and `[[<element id>|r<rev>]]` pins a revision. `findReferences(text)` returns every token and marks malformed IDs `valid: false`, so the UI can show them as unresolved. `formatReference` writes a token. The sequence name `sim` is reserved: `[[sim:...]]` tokens are simulation references (`@pulseos/sim-protocol`) and are skipped.
 
 ## Model Experience
 
